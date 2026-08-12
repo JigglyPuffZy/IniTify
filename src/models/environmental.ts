@@ -1,8 +1,8 @@
-/** Environmental heat data from DOST-PAGASA pipeline */
+/** Environmental heat data */
 export interface HeatIndexReading {
   heatIndex: number;
   retrievedAt: string;
-  source: 'DOST-PAGASA';
+  source: 'manual' | 'cached' | 'DOST-PAGASA';
   latitude: number | null;
   longitude: number | null;
   isCached: boolean;

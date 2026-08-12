@@ -2,9 +2,9 @@ import { appConfig } from '@/src/config/app.config';
 import { emergencyThresholdConfig, EMERGENCY_DEV_MODE } from '@/src/config/emergency.config';
 import { FIRST_AID_GUIDANCE } from '@/src/constants/first-aid';
 import decisionTreeRules from '@/src/config/decision-tree.rules';
-import { environmentalService } from '@/src/services/environmental/environmental.service';
 import { hospitalService } from '@/src/services/hospital/hospital.service';
 import { databaseService } from '@/src/services/database/database.service';
+import { pagasaNewsService } from '@/src/services/pagasa-news/pagasa-news.service';
 import type { SetupChecklistItem, SystemSetupStatus } from '@/src/models/setup-status';
 import type { UserProfile } from '@/src/models/user';
 import type { EmergencyContact } from '@/src/models/user';
@@ -26,37 +26,15 @@ export function getSystemSetupStatus(params: {
 }): SystemSetupStatus {
   const items: SetupChecklistItem[] = [];
 
-  const pagasa = environmentalService.getProviderStatus();
-  const hasPagasaToken =
-    appConfig.pagasaApiKey !== null || appConfig.pagasaApiUrl !== null;
-
   items.push(
     item(
-      'pagasa',
-      'DOST-PAGASA API credentials',
-      hasPagasaToken
-        ? pagasa.configured
-          ? 'done'
-          : 'needs_you'
-        : 'in_progress',
-      hasPagasaToken
-        ? pagasa.message
-        : 'Request letter in progress. TenDay API token still needed.',
-      hasPagasaToken
-        ? 'Add token to .env and restart Expo.'
-        : 'Submit TenDay request at tenday.pagasa.dost.gov.ph.',
-    ),
-  );
-
-  items.push(
-    item(
-      'pagasa-location',
-      'PAGASA location (province/municity)',
-      appConfig.pagasaProvince || appConfig.pagasaMunicity ? 'done' : 'needs_you',
-      appConfig.pagasaProvince || appConfig.pagasaMunicity
-        ? `${appConfig.pagasaMunicity ?? '?'}, ${appConfig.pagasaProvince ?? '?'}`
-        : 'TenDay API needs exact PAGASA location names.',
-      'Set EXPO_PUBLIC_PAGASA_PROVINCE and EXPO_PUBLIC_PAGASA_MUNICITY in .env.',
+      'pagasa-news',
+      'DOST-PAGASA Updates (AI news collector)',
+      pagasaNewsService.isConfigured() ? 'done' : 'needs_you',
+      pagasaNewsService.isConfigured()
+        ? 'Automatic collector runs on server schedule — no manual news entry.'
+        : 'Configure Supabase and run initify_supabase_pagasa_news.sql.',
+      'Start server/ — collector fetches official PAGASA pages automatically.',
     ),
   );
 
@@ -129,11 +107,11 @@ export function getSystemSetupStatus(params: {
     item(
       'hospital',
       'Nearest hospital data source',
-      hospitalService.isConfigured() ? 'needs_you' : 'optional',
+      hospitalService.isConfigured() ? 'done' : 'optional',
       hospitalService.isConfigured()
-        ? 'Provider set but integration not implemented.'
+        ? `Provider: ${appConfig.hospitalDataProvider} — Tuguegarao static list active.`
         : 'Not configured.',
-      'Set EXPO_PUBLIC_HOSPITAL_DATA_PROVIDER when provider is chosen.',
+      'Set EXPO_PUBLIC_HOSPITAL_DATA_PROVIDER=static-tuguegarao in .env.',
     ),
   );
 
@@ -141,23 +119,27 @@ export function getSystemSetupStatus(params: {
     item(
       'maps',
       'Hospital navigation / maps',
-      appConfig.mapsProvider ? 'needs_you' : 'optional',
+      appConfig.mapsProvider ? 'done' : 'optional',
       appConfig.mapsProvider
-        ? `Provider: ${appConfig.mapsProvider} — integration pending.`
+        ? `Provider: ${appConfig.mapsProvider} — opens device maps app.`
         : 'Not configured.',
-      'Set EXPO_PUBLIC_MAPS_PROVIDER (e.g. google).',
+      'Set EXPO_PUBLIC_MAPS_PROVIDER=google in .env.',
     ),
   );
 
   items.push(
     item(
       'database',
-      'Cloud database (Firebase/MySQL)',
-      databaseService.isConfigured() ? 'needs_you' : 'optional',
+      'Cloud database (Supabase/MySQL)',
+      databaseService.isConfigured() ? 'done' : 'optional',
       databaseService.isConfigured()
-        ? `Provider: ${databaseService.getProvider()} — integration pending.`
+        ? appConfig.databaseProvider === 'supabase'
+          ? `Supabase: ${appConfig.supabaseUrl ?? 'URL missing'}`
+          : `MySQL API: ${appConfig.mysqlApiUrl ?? 'URL missing'}`
         : 'Using local storage (AsyncStorage) for now.',
-      'Choose Firebase or MySQL and set EXPO_PUBLIC_DATABASE_PROVIDER.',
+      appConfig.databaseProvider === 'supabase'
+        ? 'Set EXPO_PUBLIC_DATABASE_PROVIDER=supabase, URL, and anon key.'
+        : 'Set EXPO_PUBLIC_DATABASE_PROVIDER=mysql and EXPO_PUBLIC_MYSQL_API_URL.',
     ),
   );
 
@@ -173,15 +155,12 @@ export function getSystemSetupStatus(params: {
     ),
   );
 
-  const pagasaReady = pagasa.configured;
   const treeReady = decisionTreeRules.enabled;
   const profileReady = params.profile !== null;
 
   return {
     readyForAssessment:
-      treeReady &&
-      profileReady &&
-      (pagasaReady || appConfig.devManualHeatEnabled),
+      treeReady && profileReady && appConfig.devManualHeatEnabled,
     readyForProduction: items.every(
       (i) => i.status === 'done' || i.status === 'optional',
     ),
@@ -198,7 +177,7 @@ export function getBlockingItems(status: SystemSetupStatus): SetupChecklistItem[
 export function getNextPriorityItem(
   status: SystemSetupStatus,
 ): SetupChecklistItem | null {
-  const priority = ['decision-tree', 'pagasa', 'pagasa-location', 'user-profile'];
+  const priority = ['decision-tree', 'pagasa-news', 'user-profile'];
   for (const id of priority) {
     const found = status.items.find((i) => i.id === id);
     if (found && (found.status === 'blocked' || found.status === 'needs_you')) {

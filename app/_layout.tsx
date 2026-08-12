@@ -4,6 +4,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { IniTifyProvider } from '@/src/context/IniTifyContext';
+import { EmergencyActiveMonitor } from '@/src/components/EmergencyActiveMonitor';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -26,6 +27,7 @@ export default function RootLayout() {
 
   return (
     <IniTifyProvider>
+      <EmergencyActiveMonitor />
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: '#006AB1' },
@@ -36,6 +38,7 @@ export default function RootLayout() {
         <Stack.Screen name="index" options={{ title: 'IniTify', headerShown: false }} />
         <Stack.Screen name="setup" options={{ title: 'User Setup' }} />
         <Stack.Screen name="dashboard" options={{ title: 'Heat-Risk Dashboard' }} />
+        <Stack.Screen name="pagasa-updates" options={{ title: 'DOST-PAGASA Updates' }} />
         <Stack.Screen name="assessment" options={{ title: 'Risk Assessment' }} />
         <Stack.Screen name="recommendations" options={{ title: 'Recommendations' }} />
         <Stack.Screen name="alerts" options={{ title: 'Alerts' }} />

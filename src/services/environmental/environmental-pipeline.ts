@@ -44,6 +44,7 @@ export function validateHeatIndexReading(data: {
 
 export function toHeatIndexReading(
   cleaned: ReturnType<typeof cleanHeatIndexData>,
+  source: HeatIndexReading['source'] = 'manual',
 ): HeatIndexReading | null {
   const validation = validateHeatIndexReading(cleaned);
   if (!validation.valid || cleaned.heatIndex === null) return null;
@@ -51,7 +52,7 @@ export function toHeatIndexReading(
   return {
     heatIndex: cleaned.heatIndex,
     retrievedAt: new Date().toISOString(),
-    source: 'DOST-PAGASA',
+    source,
     latitude: cleaned.latitude,
     longitude: cleaned.longitude,
     isCached: false,

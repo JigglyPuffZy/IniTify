@@ -19,6 +19,7 @@ import { riskAssessmentService } from '@/src/services/risk-assessment/risk-asses
 import { offlineCacheService } from '@/src/services/offline-cache/offline-cache.service';
 import { emergencyService } from '@/src/services/emergency/emergency.service';
 import { recommendationService } from '@/src/services/recommendations/recommendation.service';
+import { databaseService } from '@/src/services/database/database.service';
 import { appConfig } from '@/src/config/app.config';
 
 const STORAGE_KEYS = {
@@ -60,11 +61,20 @@ export function IniTifyProvider({ children }: { children: ReactNode }) {
   >('unavailable');
   const [assessment, setAssessment] = useState<RiskAssessmentResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  /** Re-evaluate emergency when safety prompts / inactivity change */
+  const [emergencyTick, setEmergencyTick] = useState(0);
 
   const emergencyState = useMemo(
     () => emergencyService.evaluateEmergency(assessment?.level ?? null),
-    [assessment?.level],
+    [assessment?.level, emergencyTick],
   );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setEmergencyTick((t) => t + 1);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     async function loadPersisted() {
@@ -108,8 +118,11 @@ export function IniTifyProvider({ children }: { children: ReactNode }) {
     setLocation(result.location);
     if (result.location) {
       emergencyService.recordActivity(result.location);
+      if (profile) {
+        void databaseService.sync.syncLocation(profile, result.location, 'dashboard');
+      }
     }
-  }, []);
+  }, [profile]);
 
   const refreshHeatData = useCallback(async () => {
     const result = await environmentalService.fetchHeatIndex(
@@ -151,9 +164,12 @@ export function IniTifyProvider({ children }: { children: ReactNode }) {
         'DEVELOPMENT TEST DATA — manual heat index entry. NOT live DOST-PAGASA data.',
       );
       await offlineCacheService.saveHeatReading(result.data);
+      if (profile) {
+        void databaseService.sync.syncHeatReading(profile, result.data, 'dev_manual');
+      }
       return { ok: true, message: 'Manual dev heat index applied for testing.' };
     },
-    [location],
+    [location, profile],
   );
 
   const runAssessment = useCallback(() => {
@@ -166,6 +182,10 @@ export function IniTifyProvider({ children }: { children: ReactNode }) {
     setAssessment(result);
     offlineCacheService.saveAssessment(result);
     if (location) emergencyService.recordActivity(location);
+    setEmergencyTick((t) => t + 1);
+    if (profile && result.level) {
+      void databaseService.sync.syncAssessment(profile, result);
+    }
   }, [profile, heatReading, location]);
 
   const recordSafetyPromptResponse = useCallback(
@@ -176,9 +196,18 @@ export function IniTifyProvider({ children }: { children: ReactNode }) {
         emergencyService.recordFailedSafetyPrompt();
       }
       if (location) emergencyService.recordActivity(location);
+      setEmergencyTick((t) => t + 1);
+      if (profile) {
+        void databaseService.sync.syncSafetyPrompt(profile, responded);
+      }
     },
-    [location],
+    [location, profile],
   );
+
+  useEffect(() => {
+    if (!profile || !databaseService.sync.isEnabled()) return;
+    void databaseService.sync.syncEmergencyState(profile, emergencyState);
+  }, [profile, emergencyState.isActive, emergencyState.activatedAt]);
 
   const value = useMemo(
     () => ({

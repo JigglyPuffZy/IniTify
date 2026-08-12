@@ -8,11 +8,13 @@ import {
   ErrorState,
 } from '@/src/components/ScreenContainer';
 import { PrimaryButton } from '@/src/components/UiComponents';
+import { emergencyContactService } from '@/src/services/emergency/emergency.service';
+import { dialPhoneNumber } from '@/src/services/emergency/emergency-hotline.service';
 import {
-  emergencyContactService,
-} from '@/src/services/emergency/emergency.service';
+  EMERGENCY_DEV_MODE,
+  EMERGENCY_HOTLINES,
+} from '@/src/config/emergency.config';
 import { FIRST_AID_GUIDANCE } from '@/src/constants/first-aid';
-import { EMERGENCY_DEV_MODE } from '@/src/config/emergency.config';
 import { DISCLAIMER } from '@/src/constants/risk-levels';
 
 export default function EmergencyScreen() {
@@ -25,8 +27,14 @@ export default function EmergencyScreen() {
     recordSafetyPromptResponse,
   } = useIniTify();
   const [notifyResult, setNotifyResult] = useState<string | null>(null);
+  const [callResult, setCallResult] = useState<string | null>(null);
 
   if (!profile) return <Redirect href="/" />;
+
+  async function handleDial(phone: string) {
+    const result = await dialPhoneNumber(phone);
+    setCallResult(result.message);
+  }
 
   async function handleNotifyContact() {
     const result = await emergencyContactService.prepareNotification({
@@ -56,6 +64,33 @@ export default function EmergencyScreen() {
           />
         ) : null}
 
+        <Text style={styles.sectionTitle}>Call for Help — Tuguegarao City</Text>
+        <InfoBanner
+          message="Local hotlines from Tuguegarao City Government. Opens your phone dialer — use a real phone with SIM (not PC emulator)."
+          variant="info"
+        />
+        {EMERGENCY_HOTLINES.map((hotline) => (
+          <PrimaryButton
+            key={hotline.id}
+            label={`Call ${hotline.label}`}
+            onPress={() => handleDial(hotline.phone)}
+            variant="danger"
+          />
+        ))}
+        {emergencyContact?.phone ? (
+          <PrimaryButton
+            label={`Call ${emergencyContact.name} (${emergencyContact.phone})`}
+            onPress={() => handleDial(emergencyContact.phone)}
+            variant="danger"
+          />
+        ) : (
+          <InfoBanner
+            message="Add an emergency contact in Setup to enable one-tap call to your contact."
+            variant="warning"
+          />
+        )}
+        {callResult ? <Text style={styles.result}>{callResult}</Text> : null}
+
         <View style={styles.statusBox}>
           <Text style={styles.statusLabel}>Emergency Status</Text>
           <Text
@@ -82,6 +117,13 @@ export default function EmergencyScreen() {
           active={emergencyState.indicators.prolongedInactivity}
         />
 
+        {emergencyState.isActive ? (
+          <InfoBanner
+            message="Emergency is ACTIVE. Use Call for Help below or follow first-aid guidance."
+            variant="emergency"
+          />
+        ) : null}
+
         {emergencyState.missingConfiguration.length > 0 ? (
           <InfoBanner
             message={`Missing thresholds: ${emergencyState.missingConfiguration.join(', ')}. These values are NOT specified in the research documentation.`}
@@ -107,6 +149,10 @@ export default function EmergencyScreen() {
           label="Prepare Emergency Contact Notification"
           onPress={handleNotifyContact}
           variant="danger"
+        />
+        <InfoBanner
+          message="SMS/text to your contact is NOT sent yet (dev mode). Step 6 adds real SMS. This button only prepares the message preview."
+          variant="info"
         />
         {notifyResult ? <Text style={styles.result}>{notifyResult}</Text> : null}
         {!emergencyContact ? (

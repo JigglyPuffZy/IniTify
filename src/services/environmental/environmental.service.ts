@@ -1,4 +1,3 @@
-import { appConfig } from '@/src/config/app.config';
 import type { EnvironmentalDataResult } from '@/src/models/environmental';
 import {
   cleanHeatIndexData,
@@ -6,84 +5,37 @@ import {
   validateHeatIndexReading,
 } from './environmental-pipeline';
 import { offlineCacheService } from '@/src/services/offline-cache/offline-cache.service';
-import {
-  fetchFromCustomPagasaEndpoint,
-  fetchFromTenDayApi,
-  getPagasaProviderStatus,
-} from './pagasa/pagasa.service';
 
 /**
- * Environmental data service — DOST-PAGASA heat-index source.
+ * Environmental data service — heat index for decision tree.
+ * DOST-PAGASA live API removed; use manual entry + cached values.
+ * Official advisories: pagasaNewsService / DOST-PAGASA Updates screen.
  */
 export const environmentalService = {
   isConfigured(): boolean {
-    const status = getPagasaProviderStatus();
-    return status.configured;
+    return true;
   },
 
   getProviderStatus() {
-    return getPagasaProviderStatus();
+    return {
+      configured: false,
+      provider: 'news-feed' as const,
+      message:
+        'DOST-PAGASA API disabled. View official updates on DOST-PAGASA Updates. Enter heat index manually for assessment.',
+    };
   },
 
   async fetchHeatIndex(
-    latitude: number | null,
-    longitude: number | null,
+    _latitude: number | null,
+    _longitude: number | null,
   ): Promise<EnvironmentalDataResult> {
-    const provider = appConfig.pagasaProvider;
-
-    if (provider === 'tenday') {
-      const result = await fetchFromTenDayApi(latitude, longitude);
-      if (result.reading) {
-        await offlineCacheService.saveHeatReading(result.reading);
-        return {
-          status: 'success',
-          data: result.reading,
-          message: result.message,
-        };
-      }
-
-      const cached = await offlineCacheService.getLatestHeatReading();
-      if (cached) {
-        return {
-          status: 'cached',
-          data: { ...cached, isCached: true },
-          message: `${result.message} Showing previously cached data.`,
-        };
-      }
-
-      return { status: 'unavailable', data: null, message: result.message };
-    }
-
-    if (provider === 'custom') {
-      const result = await fetchFromCustomPagasaEndpoint(latitude, longitude);
-      if (result.reading) {
-        await offlineCacheService.saveHeatReading(result.reading);
-        return {
-          status: 'success',
-          data: result.reading,
-          message: result.message,
-        };
-      }
-
-      const cached = await offlineCacheService.getLatestHeatReading();
-      if (cached) {
-        return {
-          status: 'cached',
-          data: { ...cached, isCached: true },
-          message: `${result.message} Showing previously cached data.`,
-        };
-      }
-
-      return { status: 'unavailable', data: null, message: result.message };
-    }
-
     const cached = await offlineCacheService.getLatestHeatReading();
     if (cached) {
       return {
         status: 'cached',
         data: { ...cached, isCached: true },
         message:
-          'PAGASA provider not configured. Set EXPO_PUBLIC_PAGASA_PROVIDER. Showing cached data.',
+          'Showing cached heat index. DOST-PAGASA API is not used — check DOST-PAGASA Updates for advisories.',
       };
     }
 
@@ -91,7 +43,7 @@ export const environmentalService = {
       status: 'unavailable',
       data: null,
       message:
-        'DOST-PAGASA not configured. Set EXPO_PUBLIC_PAGASA_PROVIDER to "tenday" or "custom" and provide API credentials.',
+        'No cached heat index. Enter a value manually for assessment, or view DOST-PAGASA Updates.',
     };
   },
 
@@ -105,7 +57,7 @@ export const environmentalService = {
     if (!validation.valid) {
       return { status: 'invalid', data: null, message: validation.message };
     }
-    const reading = toHeatIndexReading(cleaned);
+    const reading = toHeatIndexReading(cleaned, 'manual');
     if (!reading) {
       return { status: 'invalid', data: null, message: 'Unable to process heat data.' };
     }

@@ -1,0 +1,21 @@
+{
+  "name": "initify-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "IniTify API — MySQL sync + DOST-PAGASA AI news collector",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "collect:pagasa": "node -e \"require('./pagasa-news/collector').runCollectionCycle().then(r=>console.log(r)).catch(e=>console.error(e))\""
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.3",
+    "cheerio": "^1.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mysql2": "^3.12.0",
+    "node-cron": "^3.0.3",
+    "rss-parser": "^3.13.0"
+  }
+}

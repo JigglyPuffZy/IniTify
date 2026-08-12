@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ScrollView, Text, StyleSheet, View, TextInput } from 'react-native';
-import { Redirect } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useIniTify } from '@/src/context/IniTifyContext';
 import {
   ScreenContainer,
@@ -9,19 +9,26 @@ import {
 } from '@/src/components/ScreenContainer';
 import { RiskLevelBadge, DataSourceBanner } from '@/src/components/RiskLevelBadge';
 import { NavCard, PrimaryButton } from '@/src/components/UiComponents';
+import { PagasaUpdateCard } from '@/src/components/PagasaUpdateCard';
 import { DISCLAIMER } from '@/src/constants/risk-levels';
-import { environmentalService } from '@/src/services/environmental/environmental.service';
 import { decisionTreeService } from '@/src/services/decision-tree/decision-tree.service';
+import { pagasaNewsService } from '@/src/services/pagasa-news/pagasa-news.service';
 import { SetupChecklist } from '@/src/components/SetupChecklist';
 import {
   getNextPriorityItem,
   getSystemSetupStatus,
 } from '@/src/services/system/system-status.service';
 import { appConfig } from '@/src/config/app.config';
+import type { PagasaUpdate } from '@/src/models/pagasa-update';
 
 export default function DashboardScreen() {
+  const router = useRouter();
   const [manualHeat, setManualHeat] = useState('');
   const [manualMessage, setManualMessage] = useState<string | null>(null);
+  const [todayUpdates, setTodayUpdates] = useState<PagasaUpdate[]>([]);
+  const [todayLabel, setTodayLabel] = useState<string>('');
+  const [latestOlder, setLatestOlder] = useState<PagasaUpdate | null>(null);
+  const [newsMessage, setNewsMessage] = useState<string | null>(null);
   const {
     profile,
     emergencyContact,
@@ -33,7 +40,6 @@ export default function DashboardScreen() {
     emergencyState,
     isLoading,
     refreshLocation,
-    refreshHeatData,
     applyManualDevHeatIndex,
     runAssessment,
   } = useIniTify();
@@ -42,10 +48,27 @@ export default function DashboardScreen() {
     refreshLocation();
   }, [refreshLocation]);
 
+  useEffect(() => {
+    pagasaNewsService.getFeed(new Date()).then((result) => {
+      setNewsMessage(result.message);
+      setTodayUpdates(result.data?.today ?? []);
+      setTodayLabel(result.data?.todayLabel ?? '');
+      setLatestOlder(result.data?.latestOlder ?? null);
+    });
+    const interval = setInterval(() => {
+      pagasaNewsService.getFeed(new Date()).then((result) => {
+        setNewsMessage(result.message);
+        setTodayUpdates(result.data?.today ?? []);
+        setTodayLabel(result.data?.todayLabel ?? '');
+        setLatestOlder(result.data?.latestOlder ?? null);
+      });
+    }, 15 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   if (isLoading) return <LoadingState />;
   if (!profile) return <Redirect href="/" />;
 
-  const pagasaStatus = environmentalService.getProviderStatus();
   const treeStatus = decisionTreeService.getRulesStatus();
   const setupStatus = getSystemSetupStatus({ profile, emergencyContact });
   const nextItem = getNextPriorityItem(setupStatus);
@@ -59,9 +82,10 @@ export default function DashboardScreen() {
           readyForAssessment={setupStatus.readyForAssessment}
         />
         <DataSourceBanner source={heatDataSource} />
-        {!pagasaStatus.configured ? (
-          <InfoBanner message={pagasaStatus.message} variant="warning" />
-        ) : null}
+        <InfoBanner
+          message="DOST-PAGASA API removed. Official updates are collected automatically — see DOST-PAGASA Updates."
+          variant="info"
+        />
         {!treeStatus.enabled ? (
           <InfoBanner message={treeStatus.message} variant="warning" />
         ) : null}
@@ -71,6 +95,31 @@ export default function DashboardScreen() {
             variant="emergency"
           />
         ) : null}
+
+        <Text style={styles.sectionTitle}>
+          Today&apos;s DOST-PAGASA Updates{todayLabel ? ` — ${todayLabel}` : ''}
+        </Text>
+        {todayUpdates.length ? (
+          todayUpdates.slice(0, 2).map((item) => (
+            <PagasaUpdateCard key={item.id} update={item} />
+          ))
+        ) : (
+          <>
+            <InfoBanner
+              message="No new DOST-PAGASA updates have been published today."
+              variant="info"
+            />
+            {latestOlder ? (
+              <PagasaUpdateCard update={latestOlder} isOlderAdvisory />
+            ) : null}
+          </>
+        )}
+        <PrimaryButton
+          label="View All DOST-PAGASA Updates"
+          variant="secondary"
+          onPress={() => router.push('/pagasa-updates')}
+        />
+        {newsMessage ? <Text style={styles.newsMessage}>{newsMessage}</Text> : null}
 
         <View style={styles.riskSection}>
           <Text style={styles.sectionLabel}>Current Heat-Risk Level</Text>
@@ -83,11 +132,7 @@ export default function DashboardScreen() {
         <View style={styles.infoRow}>
           <InfoItem
             label="Heat Index"
-            value={
-              heatReading
-                ? `${heatReading.heatIndex}°C`
-                : 'Unavailable'
-            }
+            value={heatReading ? `${heatReading.heatIndex}°C` : 'Unavailable'}
           />
           <InfoItem
             label="GPS"
@@ -99,12 +144,10 @@ export default function DashboardScreen() {
           <Text style={styles.heatMessage}>{heatDataMessage}</Text>
         ) : null}
 
-        <PrimaryButton label="Refresh Heat Data" onPress={refreshHeatData} />
-
         {appConfig.devManualHeatEnabled ? (
           <View style={styles.devBox}>
             <InfoBanner
-              message="Development testing only — enter a heat index value while waiting for PAGASA API. This is NOT live data."
+              message="Enter heat index for risk assessment demo. This is NOT scraped or invented — use official DOST-PAGASA Updates for advisories."
               variant="warning"
             />
             <TextInput
@@ -115,7 +158,7 @@ export default function DashboardScreen() {
               keyboardType="decimal-pad"
             />
             <PrimaryButton
-              label="Apply Dev Heat Index"
+              label="Apply Heat Index for Assessment"
               onPress={async () => {
                 const value = Number.parseFloat(manualHeat);
                 const result = await applyManualDevHeatIndex(value);
@@ -134,6 +177,11 @@ export default function DashboardScreen() {
         <Text style={styles.disclaimer}>{DISCLAIMER}</Text>
 
         <Text style={styles.navHeading}>System Functions</Text>
+        <NavCard
+          title="DOST-PAGASA Updates"
+          description="Official advisories and AI-simplified summaries"
+          href="/pagasa-updates"
+        />
         <NavCard
           title="Risk Assessment"
           description="View detailed heat-risk classification"
@@ -186,6 +234,19 @@ function InfoItem({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0f172a',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  newsMessage: {
+    fontSize: 12,
+    color: '#64748b',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
   riskSection: {
     alignItems: 'center',
     marginBottom: 20,

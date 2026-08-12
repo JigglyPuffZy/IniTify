@@ -1,4 +1,4 @@
-import { ScrollView, Text, StyleSheet } from 'react-native';
+import { ScrollView, Text, StyleSheet, View } from 'react-native';
 import { Redirect } from 'expo-router';
 import { useIniTify } from '@/src/context/IniTifyContext';
 import {
@@ -7,22 +7,41 @@ import {
   EmptyState,
 } from '@/src/components/ScreenContainer';
 import { PrimaryButton } from '@/src/components/UiComponents';
-import { hospitalService } from '@/src/services/hospital/hospital.service';
+import {
+  hospitalService,
+  type HospitalInfo,
+} from '@/src/services/hospital/hospital.service';
+import { TUGUEGARAO_HOSPITAL_COUNT } from '@/src/data/tuguegarao-hospitals';
 import { appConfig } from '@/src/config/app.config';
 import { useState } from 'react';
 
 export default function HospitalScreen() {
   const { profile, location } = useIniTify();
   const [message, setMessage] = useState<string | null>(null);
+  const [hospitals, setHospitals] = useState<HospitalInfo[]>([]);
+  const [loading, setLoading] = useState(false);
 
   if (!profile) return <Redirect href="/" />;
 
-  async function handleFindHospital() {
+  async function handleFindHospitals() {
     if (!location) {
-      setMessage('Location unavailable. Enable GPS to find nearest hospital.');
+      setMessage('Location unavailable. Enable GPS to find nearest hospitals.');
+      setHospitals([]);
       return;
     }
-    const result = await hospitalService.findNearest(location);
+    setLoading(true);
+    try {
+      const result = await hospitalService.findAllRanked(location);
+      setMessage(result.message);
+      setHospitals(result.data ?? []);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleNavigate(hospital: HospitalInfo) {
+    if (!location) return;
+    const result = await hospitalService.openNavigation(hospital, location);
     setMessage(result.message);
   }
 
@@ -31,17 +50,27 @@ export default function HospitalScreen() {
       <ScreenContainer title="Hospital & Navigation">
         {!hospitalService.isConfigured() ? (
           <InfoBanner
-            message="Hospital data provider is not configured. Set EXPO_PUBLIC_HOSPITAL_DATA_PROVIDER. No hospitals are listed — data is not invented."
+            message="Set EXPO_PUBLIC_HOSPITAL_DATA_PROVIDER=static-tuguegarao in .env and restart Expo."
             variant="warning"
           />
-        ) : null}
+        ) : (
+          <InfoBanner
+            message={`${TUGUEGARAO_HOSPITAL_COUNT} major hospitals in Tuguegarao City (government + private)`}
+            variant="info"
+          />
+        )}
 
         {!appConfig.mapsProvider ? (
           <InfoBanner
-            message="Navigation service is not configured. Set EXPO_PUBLIC_MAPS_PROVIDER."
+            message="Set EXPO_PUBLIC_MAPS_PROVIDER=google in .env for turn-by-turn navigation."
             variant="warning"
           />
-        ) : null}
+        ) : (
+          <InfoBanner
+            message={`Navigation: ${appConfig.mapsProvider} maps`}
+            variant="info"
+          />
+        )}
 
         {!location ? (
           <EmptyState message="GPS location is required for hospital identification and navigation." />
@@ -52,12 +81,42 @@ export default function HospitalScreen() {
           </Text>
         )}
 
-        <PrimaryButton label="Find Nearest Hospital" onPress={handleFindHospital} />
+        <PrimaryButton
+          label={loading ? 'Finding...' : 'Find Hospitals Near Me'}
+          onPress={handleFindHospitals}
+          disabled={loading || !location}
+        />
+
+        {hospitals.map((hospital) => (
+          <View
+            key={hospital.id}
+            style={[styles.card, hospital.isNearest ? styles.cardNearest : null]}
+          >
+            {hospital.isNearest ? (
+              <Text style={styles.nearestBadge}>Nearest</Text>
+            ) : null}
+            <Text style={styles.hospitalName}>{hospital.name}</Text>
+            <Text style={styles.hospitalDetail}>{hospital.address}</Text>
+            <Text style={styles.hospitalDetail}>
+              {hospital.category === 'government' ? 'Government' : 'Private'}
+              {hospital.phone ? ` · ${hospital.phone}` : ''}
+            </Text>
+            <Text style={styles.hospitalDetail}>
+              Distance: {hospital.distanceKm} km
+              {hospital.estimatedTravelTime ? ` · ${hospital.estimatedTravelTime}` : ''}
+            </Text>
+            <PrimaryButton
+              label="Open Navigation"
+              onPress={() => handleNavigate(hospital)}
+              disabled={!appConfig.mapsProvider}
+            />
+          </View>
+        ))}
 
         {message ? <Text style={styles.message}>{message}</Text> : null}
 
         <InfoBanner
-          message="Real-time hospital navigation requires an active internet connection and a configured mapping service."
+          message="Major hospitals in Tuguegarao City for heat-emergency guidance. Not every clinic is listed — confirm with local authorities in a real emergency."
           variant="info"
         />
       </ScreenContainer>
@@ -72,6 +131,40 @@ const styles = StyleSheet.create({
     color: '#334155',
     marginBottom: 16,
     textAlign: 'center',
+  },
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    gap: 8,
+  },
+  cardNearest: {
+    borderColor: '#0ea5e9',
+    backgroundColor: '#f0f9ff',
+  },
+  nearestBadge: {
+    alignSelf: 'flex-start',
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0369a1',
+    backgroundColor: '#bae6fd',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  hospitalName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  hospitalDetail: {
+    fontSize: 13,
+    color: '#64748b',
+    lineHeight: 18,
   },
   message: {
     fontSize: 13,

@@ -33,6 +33,10 @@ yarn-error.*
 # local env files
 .env
 .env*.local
+server/.env
+
+# IDE / editor
+.cursor/
 
 # Python virtual environment
 ml/.venv/

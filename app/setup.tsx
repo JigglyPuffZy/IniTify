@@ -64,12 +64,15 @@ export default function SetupScreen() {
         },
       };
       await saveProfile(profile);
-      if (contactName.trim() && contactPhone.trim()) {
-        await saveEmergencyContact({
-          name: contactName.trim(),
-          phone: contactPhone.trim(),
-        });
+      const contact =
+        contactName.trim() && contactPhone.trim()
+          ? { name: contactName.trim(), phone: contactPhone.trim() }
+          : null;
+      if (contact) {
+        await saveEmergencyContact(contact);
       }
+      const { databaseService } = await import('@/src/services/database/database.service');
+      void databaseService.sync.syncUserProfile(profile, contact);
       await refreshLocation();
       router.replace('/dashboard');
     } finally {

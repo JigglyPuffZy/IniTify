@@ -74,4 +74,40 @@ export const notificationService = {
       };
     }
   },
+
+  /** Local notification on this device when emergency mode becomes ACTIVE */
+  async sendEmergencyActiveAlert(reasons: string): Promise<ServiceResult<string>> {
+    const permission = await this.requestPermission();
+    if (permission.status !== 'success') {
+      return {
+        status: permission.status,
+        data: null,
+        message: permission.message,
+      };
+    }
+
+    try {
+      const id = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'IniTify — Emergency ACTIVE',
+          body: `Heat emergency detected: ${reasons}. Open the app and seek help.`,
+          data: { type: 'emergency-active' },
+          sound: 'default',
+          priority: Notifications.AndroidNotificationPriority.MAX,
+        },
+        trigger: null,
+      });
+      return {
+        status: 'success',
+        data: id,
+        message: 'Emergency active notification sent.',
+      };
+    } catch {
+      return {
+        status: 'error',
+        data: null,
+        message: 'Failed to send emergency notification.',
+      };
+    }
+  },
 };
