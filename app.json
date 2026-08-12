@@ -33,7 +33,20 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "IniTify uses your location for heat-risk assessment and emergency assistance."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png"
+        }
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

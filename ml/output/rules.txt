@@ -1,0 +1,25 @@
+|--- num__heat_index <= 33.00
+|   |--- num__heat_index <= 27.00
+|   |   |--- cat__health_condition_nan <= 0.50
+|   |   |   |--- class: MODERATE
+|   |   |--- cat__health_condition_nan >  0.50
+|   |   |   |--- cat__activity_level_High <= 0.50
+|   |   |   |   |--- class: LOW
+|   |   |   |--- cat__activity_level_High >  0.50
+|   |   |   |   |--- class: MODERATE
+|   |--- num__heat_index >  27.00
+|   |   |--- cat__health_condition_nan <= 0.50
+|   |   |   |--- class: HIGH
+|   |   |--- cat__health_condition_nan >  0.50
+|   |   |   |--- cat__activity_level_Moderate <= 0.50
+|   |   |   |   |--- class: HIGH
+|   |   |   |--- cat__activity_level_Moderate >  0.50
+|   |   |   |   |--- class: MODERATE
+|--- num__heat_index >  33.00
+|   |--- num__age <= 12.00
+|   |   |--- cat__hydration_status_Moderately hydrated <= 0.50
+|   |   |   |--- class: EXTREME
+|   |   |--- cat__hydration_status_Moderately hydrated >  0.50
+|   |   |   |--- class: HIGH
+|   |--- num__age >  12.00
+|   |   |--- class: EXTREME

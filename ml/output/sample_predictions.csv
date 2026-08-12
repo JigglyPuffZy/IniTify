@@ -1,0 +1,25 @@
+heat_index,age,health_condition,activity_level,hydration_status,actual,predicted
+24,8,,Moderate,Moderately hydrated,LOW,LOW
+22,35,,Low,Well hydrated,LOW,LOW
+22,16,,Low,Well hydrated,LOW,LOW
+24,35,Healthy,Low,Dehydrated,MODERATE,MODERATE
+30,71,,Low,Well hydrated,HIGH,HIGH
+40,25,Heart disease,Moderate,Dehydrated,EXTREME,EXTREME
+32,78,,High,Moderately hydrated,HIGH,HIGH
+55,62,,High,Moderately hydrated,EXTREME,EXTREME
+36,25,,Moderate,Moderately hydrated,HIGH,EXTREME
+22,35,,Moderate,Moderately hydrated,LOW,LOW
+24,71,,Low,Well hydrated,MODERATE,LOW
+26,35,Hypertension,Low,Well hydrated,MODERATE,MODERATE
+38,78,,High,Moderately hydrated,EXTREME,EXTREME
+30,62,,Moderate,Moderately hydrated,HIGH,MODERATE
+24,62,,Moderate,Moderately hydrated,MODERATE,LOW
+24,16,,Low,Well hydrated,LOW,LOW
+22,55,,Moderate,Moderately hydrated,LOW,LOW
+34,48,,Moderate,Moderately hydrated,HIGH,EXTREME
+36,8,Healthy,Low,Dehydrated,EXTREME,EXTREME
+52,48,,Moderate,Moderately hydrated,EXTREME,EXTREME
+30,8,Asthma,High,Dehydrated,HIGH,HIGH
+24,78,,High,Dehydrated,MODERATE,MODERATE
+52,62,Healthy,Low,Dehydrated,EXTREME,EXTREME
+32,8,,Moderate,Moderately hydrated,MODERATE,MODERATE
