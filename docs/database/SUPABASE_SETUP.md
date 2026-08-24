@@ -6,12 +6,23 @@ Supabase uses **PostgreSQL**, not MySQL. Use the Supabase file below — **not**
 
 ## What to paste in Supabase SQL Editor
 
-| Step | File |
-|------|------|
-| **1 (required)** | `docs/database/initify_supabase_schema.sql` |
-| **2 (required)** | `docs/database/initify_supabase_permissions.sql` |
-| **3 (optional demo rows)** | `docs/database/initify_supabase_sample_data.sql` |
-| **4 (PAGASA news)** | `docs/database/initify_supabase_pagasa_news.sql` |
+Run **one file per query** in this order (copy entire file → paste → **Run**):
+
+| Step | File | Purpose |
+|------|------|---------|
+| **1 (required)** | `initify_supabase_schema.sql` | Core tables (users, assessments, emergency, hospitals…) |
+| **2 (required)** | `initify_supabase_check_in.sql` | Check-ins, reminder settings, weather acks |
+| **3 (recommended)** | `initify_supabase_health_safety_kb.sql` | Personalized safety tips by health + weather |
+| **4 (auth)** | `initify_supabase_auth.sql` | Login / sign-up link to `auth.users` |
+| **5 (required)** | `initify_supabase_fix_app_sync.sql` | **Fixes 403 Forbidden** — RLS policies for anon key |
+| **6 (optional)** | `initify_supabase_hospitals_seed.sql` | Re-seed hospital list |
+| **6b (optional)** | `initify_supabase_check_in_nearest_hospital.sql` | Check-in nearest-hospital CTA only (`check_in` location + `lookup_source`) |
+| **6c (optional)** | `initify_supabase_weather_auto_refresh.sql` | 15-min live weather auto-refresh logs (`weather_refresh_logs`) |
+| **7 (verify)** | `initify_supabase_verify.sql` | Confirm tables + sample rows |
+
+> **Getting `403` on `/rest/v1/users`?** You skipped step 5, or ran `initify_supabase_auth.sql` without the fix file. Run `initify_supabase_fix_app_sync.sql` — safe to re-run.
+
+`initify_supabase_permissions.sql` is optional if you already ran step 5 (the fix file includes grants + policies).
 
 ### Steps in Supabase Dashboard
 
@@ -20,10 +31,33 @@ Supabase uses **PostgreSQL**, not MySQL. Use the Supabase file below — **not**
 3. **New query**  
 4. Open `initify_supabase_schema.sql` in Cursor → **Ctrl+A, Ctrl+C**  
 5. Paste into Supabase → click **Run**  
-6. Check **Table Editor** — you should see 17 tables  
-7. **New query** → paste `initify_supabase_permissions.sql` → **Run** (lets the app insert data)
+6. Repeat for steps 2 → 5 in the table above (especially **`initify_supabase_fix_app_sync.sql`**)  
+7. **New query** → paste `initify_supabase_verify.sql` → **Run**  
 
-### App `.env` (already configured if you shared keys)
+---
+
+## App buttons → SQL tables (lahat may table na)
+
+| Button / feature | Screen | Supabase table |
+|------------------|--------|----------------|
+| Get started / Setup save | Setup | `users`, `user_risk_profiles`, `emergency_contacts` |
+| Run risk assessment | Home | `risk_assessments`, `heat_index_readings` |
+| Safety tips | Recommendations | `recommendation_logs` |
+| Allow / Send test alert | Alerts | `heat_alert_logs` |
+| **Call** (hotlines) | Emergency | `emergency_hotline_calls` |
+| I'm OK / Need help | Emergency | `safety_prompt_responses` |
+| Emergency ACTIVE popup | Background | `emergency_events`, `emergency_active_alerts`, `emergency_contact_notifications` |
+| Find nearest hospital | Emergency / Hospitals | `hospital_lookups` |
+| Get directions | Hospitals | `hospital_lookups` (logged on list load) |
+| GPS refresh | Home / Dashboard | `location_logs` |
+| Live weather | Weather | WeatherAPI.com (not stored in Supabase by default) |
+| Offline saved data | Offline | `offline_cache_snapshots` (local-first; optional sync) |
+
+**Note:** Hospitals list works **offline** from `src/data/tuguegarao-hospitals.ts`. SQL `hospitals` table is for thesis demo / reporting — seeded in step 1.
+
+---
+
+### App `.env`
 
 ```env
 EXPO_PUBLIC_DATABASE_PROVIDER=supabase
@@ -99,13 +133,12 @@ Try:
 
 ## App connection note
 
-The IniTify mobile app currently syncs via **`server/` + MySQL** OR local storage.
+The app syncs **directly to Supabase** when `.env` has:
 
-To connect the app **directly to Supabase**, you would need:
-- Supabase project URL + anon key in `.env` (done)
-- `@supabase/supabase-js` in the app (done — sync on setup, heat, assessment, emergency, location)
+- `EXPO_PUBLIC_DATABASE_PROVIDER=supabase`
+- Valid `EXPO_PUBLIC_SUPABASE_URL` + `EXPO_PUBLIC_SUPABASE_ANON_KEY`
 
-For **thesis database demo**, running the SQL in Supabase Table Editor is enough to show schema + sample data.
+Local AsyncStorage still works offline. Sync runs on setup, assessment, emergency Call button, hospitals, alerts, and more (see table above).
 
 ---
 

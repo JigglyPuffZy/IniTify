@@ -2,10 +2,13 @@ import type { HeatRiskLevel } from '@/src/models/risk';
 
 export type DecisionTreeFeature =
   | 'heatIndex'
+  | 'humidityPercent'
   | 'age'
   | 'healthCondition'
   | 'activityLevel'
-  | 'hydrationStatus';
+  | 'hydrationStatus'
+  | 'generalStatus'
+  | 'vulnerabilityScore';
 
 export type DecisionTreeOperator =
   | '>'
@@ -45,8 +48,11 @@ export interface DecisionTreeRulesDocument {
 
 export interface DecisionTreeInput {
   heatIndex: number | null;
+  humidityPercent?: number | null;
   age: number | null;
   healthCondition: string | null;
+  healthConditions?: string[];
   activityLevel: string | null;
   hydrationStatus: string | null;
+  generalStatus?: string | null;
 }

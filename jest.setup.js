@@ -4,16 +4,24 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 
 process.env.EXPO_PUBLIC_HOSPITAL_DATA_PROVIDER = 'static-tuguegarao';
 process.env.EXPO_PUBLIC_MAPS_PROVIDER = 'google';
-process.env.EXPO_PUBLIC_DEV_MANUAL_HEAT = 'true';
+process.env.EXPO_PUBLIC_DEV_MANUAL_HEAT = 'false';
+process.env.EXPO_PUBLIC_WEATHERAPI_KEY = 'test-weather-key';
 
-jest.mock('react-native/Libraries/Linking/Linking', () => ({
-  canOpenURL: jest.fn(async () => true),
-  openURL: jest.fn(async () => undefined),
-}));
-
-jest.mock('react-native/Libraries/Alert/Alert', () => ({
-  alert: jest.fn(),
-}));
+jest.mock('react-native', () => {
+  const RN = jest.requireActual('react-native');
+  return Object.setPrototypeOf(
+    {
+      Linking: {
+        canOpenURL: jest.fn(async () => true),
+        openURL: jest.fn(async () => undefined),
+      },
+      Alert: {
+        alert: jest.fn(),
+      },
+    },
+    RN,
+  );
+});
 
 jest.mock('expo-location', () => ({
   PermissionStatus: { GRANTED: 'granted', DENIED: 'denied' },
@@ -21,6 +29,20 @@ jest.mock('expo-location', () => ({
   requestForegroundPermissionsAsync: jest.fn(),
   getForegroundPermissionsAsync: jest.fn(),
   getCurrentPositionAsync: jest.fn(),
+}));
+
+jest.mock('expo-constants', () => ({
+  __esModule: true,
+  default: {
+    appOwnership: null,
+    executionEnvironment: 'standalone',
+    expoConfig: {},
+  },
+  ExecutionEnvironment: {
+    StoreClient: 'storeClient',
+    Standalone: 'standalone',
+    Bare: 'bare',
+  },
 }));
 
 jest.mock('expo-notifications', () => ({

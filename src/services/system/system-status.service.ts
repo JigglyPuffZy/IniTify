@@ -4,7 +4,7 @@ import { FIRST_AID_GUIDANCE } from '@/src/constants/first-aid';
 import decisionTreeRules from '@/src/config/decision-tree.rules';
 import { hospitalService } from '@/src/services/hospital/hospital.service';
 import { databaseService } from '@/src/services/database/database.service';
-import { pagasaNewsService } from '@/src/services/pagasa-news/pagasa-news.service';
+import { environmentalService } from '@/src/services/environmental/environmental.service';
 import type { SetupChecklistItem, SystemSetupStatus } from '@/src/models/setup-status';
 import type { UserProfile } from '@/src/models/user';
 import type { EmergencyContact } from '@/src/models/user';
@@ -28,13 +28,11 @@ export function getSystemSetupStatus(params: {
 
   items.push(
     item(
-      'pagasa-news',
-      'DOST-PAGASA Updates (AI news collector)',
-      pagasaNewsService.isConfigured() ? 'done' : 'needs_you',
-      pagasaNewsService.isConfigured()
-        ? 'Automatic collector runs on server schedule — no manual news entry.'
-        : 'Configure Supabase and run initify_supabase_pagasa_news.sql.',
-      'Start server/ — collector fetches official PAGASA pages automatically.',
+      'weather-api',
+      'Live weather & heat index',
+      'done',
+      'Open-Meteo provides live heat index for Tuguegarao (no API key).',
+      'Uses api.open-meteo.com for current conditions.',
     ),
   );
 
@@ -157,10 +155,10 @@ export function getSystemSetupStatus(params: {
 
   const treeReady = decisionTreeRules.enabled;
   const profileReady = params.profile !== null;
+  const heatReady = environmentalService.isConfigured() || appConfig.devManualHeatEnabled;
 
   return {
-    readyForAssessment:
-      treeReady && profileReady && appConfig.devManualHeatEnabled,
+    readyForAssessment: treeReady && profileReady && heatReady,
     readyForProduction: items.every(
       (i) => i.status === 'done' || i.status === 'optional',
     ),
@@ -177,7 +175,7 @@ export function getBlockingItems(status: SystemSetupStatus): SetupChecklistItem[
 export function getNextPriorityItem(
   status: SystemSetupStatus,
 ): SetupChecklistItem | null {
-  const priority = ['decision-tree', 'pagasa-news', 'user-profile'];
+  const priority = ['decision-tree', 'weather-api', 'user-profile'];
   for (const id of priority) {
     const found = status.items.find((i) => i.id === id);
     if (found && (found.status === 'blocked' || found.status === 'needs_you')) {

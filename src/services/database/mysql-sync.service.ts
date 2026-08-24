@@ -142,4 +142,48 @@ export const mysqlSyncService = {
       context,
     });
   },
+
+  async syncHotlineCall(): Promise<ServiceResult<unknown>> {
+    return { status: 'requires_configuration', data: null, message: 'MySQL hotline sync not implemented.' };
+  },
+
+  async syncHospitalLookup(): Promise<ServiceResult<unknown>> {
+    return { status: 'requires_configuration', data: null, message: 'MySQL hospital sync not implemented.' };
+  },
+
+  async syncRecommendations(): Promise<ServiceResult<unknown>> {
+    return { status: 'requires_configuration', data: null, message: 'MySQL recommendations sync not implemented.' };
+  },
+
+  async syncHeatAlert(): Promise<ServiceResult<unknown>> {
+    return { status: 'requires_configuration', data: null, message: 'MySQL alert sync not implemented.' };
+  },
+
+  async syncEmergencyActiveAlert(): Promise<ServiceResult<unknown>> {
+    return { status: 'requires_configuration', data: null, message: 'MySQL emergency alert sync not implemented.' };
+  },
+
+  async syncContactNotification(): Promise<ServiceResult<unknown>> {
+    return { status: 'requires_configuration', data: null, message: 'MySQL contact notification sync not implemented.' };
+  },
+
+  async syncCheckIn(): Promise<ServiceResult<unknown>> {
+    return { status: 'requires_configuration', data: null, message: 'MySQL check-in sync not implemented.' };
+  },
+
+  async syncReminderSettings(): Promise<ServiceResult<unknown>> {
+    return { status: 'requires_configuration', data: null, message: 'MySQL reminder settings sync not implemented.' };
+  },
+
+  async syncWeatherSafetyAck(): Promise<ServiceResult<unknown>> {
+    return { status: 'requires_configuration', data: null, message: 'MySQL weather ack sync not implemented.' };
+  },
+
+  async syncWeatherRefreshLog(): Promise<ServiceResult<unknown>> {
+    return {
+      status: 'requires_configuration',
+      data: null,
+      message: 'MySQL weather refresh log not implemented. Use Supabase.',
+    };
+  },
 };

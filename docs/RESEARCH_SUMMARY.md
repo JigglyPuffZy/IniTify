@@ -45,15 +45,10 @@
 
 ---
 
-## PAGASA configuration for Tuguegarao testing
+## Weather configuration for Tuguegarao testing
 
-When your TenDay token arrives:
+Live heat index uses WeatherAPI.com (not the DOST-PAGASA TenDay API):
 
 ```env
-EXPO_PUBLIC_PAGASA_PROVIDER=tenday
-EXPO_PUBLIC_PAGASA_API_KEY=your_token
-EXPO_PUBLIC_PAGASA_PROVINCE=Cagayan
-EXPO_PUBLIC_PAGASA_MUNICITY=Tuguegarao City
+EXPO_PUBLIC_WEATHERAPI_KEY=your_weatherapi_key
 ```
-
-Use exact names from PAGASA TenDay Location API if these do not match.

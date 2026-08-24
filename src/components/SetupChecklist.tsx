@@ -1,20 +1,17 @@
+import { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import type { SetupChecklistItem, ItemStatus } from '@/src/models/setup-status';
+import { radius, spacing, typography, cardShadow } from '@/src/theme';
+import { useAppTheme } from '@/src/theme/useAppTheme';
+import type { AppPalette } from '@/src/theme/palettes';
 
 const STATUS_LABELS: Record<ItemStatus, string> = {
   done: 'Done',
   in_progress: 'In progress',
   blocked: 'Blocked',
-  needs_you: 'Needs action',
+  needs_you: 'Action needed',
   optional: 'Optional',
-};
-
-const STATUS_COLORS: Record<ItemStatus, string> = {
-  done: '#16a34a',
-  in_progress: '#2563eb',
-  blocked: '#dc2626',
-  needs_you: '#ea580c',
-  optional: '#64748b',
 };
 
 interface SetupChecklistProps {
@@ -28,24 +25,40 @@ export function SetupChecklist({
   nextItem,
   readyForAssessment,
 }: SetupChecklistProps) {
+  const { palette } = useAppTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
+
+  const statusColors: Record<ItemStatus, string> = {
+    done: palette.primary,
+    in_progress: palette.warning,
+    blocked: palette.danger,
+    needs_you: palette.warning,
+    optional: palette.textMuted,
+  };
+
   return (
     <View style={styles.wrap}>
-      <Text style={styles.heading}>Setup Checklist</Text>
+      <Text style={styles.heading}>Setup progress</Text>
       <View
         style={[
           styles.readyBanner,
           readyForAssessment ? styles.readyYes : styles.readyNo,
         ]}
       >
+        <Ionicons
+          name={readyForAssessment ? 'checkmark-circle' : 'alert-circle-outline'}
+          size={18}
+          color={readyForAssessment ? palette.primary : palette.warning}
+        />
         <Text style={styles.readyText}>
           {readyForAssessment
-            ? 'Ready for full risk assessment'
-            : 'Not ready for full assessment yet'}
+            ? 'You are ready for a full risk assessment'
+            : 'Complete the steps below to unlock full assessment'}
         </Text>
       </View>
       {nextItem ? (
         <View style={styles.nextBox}>
-          <Text style={styles.nextLabel}>Do this next:</Text>
+          <Text style={styles.nextLabel}>Next step</Text>
           <Text style={styles.nextTitle}>{nextItem.title}</Text>
           <Text style={styles.nextAction}>{nextItem.action}</Text>
         </View>
@@ -54,9 +67,7 @@ export function SetupChecklist({
         <View key={entry.id} style={styles.row}>
           <View style={styles.rowTop}>
             <Text style={styles.rowTitle}>{entry.title}</Text>
-            <Text
-              style={[styles.badge, { color: STATUS_COLORS[entry.status] }]}
-            >
+            <Text style={[styles.badge, { color: statusColors[entry.status] }]}>
               {STATUS_LABELS[entry.status]}
             </Text>
           </View>
@@ -67,48 +78,91 @@ export function SetupChecklist({
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: { marginBottom: 16 },
-  heading: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0f172a',
-    marginBottom: 10,
-  },
-  readyBanner: {
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 10,
-  },
-  readyYes: { backgroundColor: '#dcfce7' },
-  readyNo: { backgroundColor: '#fef3c7' },
-  readyText: { fontSize: 13, fontWeight: '600', color: '#334155' },
-  nextBox: {
-    backgroundColor: '#eff6ff',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 10,
-    borderLeftWidth: 4,
-    borderLeftColor: '#006AB1',
-  },
-  nextLabel: { fontSize: 11, color: '#64748b', fontWeight: '600' },
-  nextTitle: { fontSize: 14, fontWeight: '700', color: '#0f172a', marginTop: 2 },
-  nextAction: { fontSize: 12, color: '#475569', marginTop: 4, lineHeight: 18 },
-  row: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  rowTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 8,
-  },
-  rowTitle: { flex: 1, fontSize: 13, fontWeight: '600', color: '#0f172a' },
-  badge: { fontSize: 11, fontWeight: '700' },
-  rowDetail: { fontSize: 12, color: '#64748b', marginTop: 6, lineHeight: 18 },
-});
+function createStyles(p: AppPalette) {
+  return StyleSheet.create({
+    wrap: {
+      marginBottom: spacing.lg,
+      backgroundColor: p.surface,
+      borderRadius: radius.lg,
+      padding: spacing.lg,
+      borderWidth: 1,
+      borderColor: p.borderLight,
+      ...cardShadow(),
+    },
+    heading: {
+      ...typography.h2,
+      color: p.text,
+      marginBottom: spacing.md,
+    },
+    readyBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      marginBottom: spacing.md,
+    },
+    readyYes: { backgroundColor: p.successSoft },
+    readyNo: { backgroundColor: p.warningSoft },
+    readyText: {
+      flex: 1,
+      ...typography.bodySm,
+      fontWeight: '600',
+      color: p.textSecondary,
+    },
+    nextBox: {
+      backgroundColor: p.primarySoft,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      marginBottom: spacing.md,
+      borderLeftWidth: 4,
+      borderLeftColor: p.primary,
+    },
+    nextLabel: {
+      ...typography.caption,
+      color: p.textMuted,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+    },
+    nextTitle: {
+      ...typography.h3,
+      color: p.text,
+      marginTop: 2,
+    },
+    nextAction: {
+      ...typography.caption,
+      color: p.textSecondary,
+      marginTop: 4,
+      lineHeight: 18,
+    },
+    row: {
+      backgroundColor: p.surfaceMuted,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      marginBottom: spacing.sm,
+      borderWidth: 1,
+      borderColor: p.borderLight,
+    },
+    rowTop: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      gap: spacing.sm,
+    },
+    rowTitle: {
+      flex: 1,
+      ...typography.label,
+      color: p.text,
+    },
+    badge: {
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    rowDetail: {
+      ...typography.caption,
+      color: p.textMuted,
+      marginTop: 6,
+      lineHeight: 18,
+    },
+  });
+}

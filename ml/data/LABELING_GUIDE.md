@@ -49,7 +49,7 @@
 These rules match the **provisional** tree in `src/config/decision-tree.rules.ts`:
 
 1. **Heat index ≥ 42** → always **EXTREME**
-2. **Heat index 33–41** → base **HIGH**; any one risk factor above → **EXTREME**
+2. **Heat index 33–41** → base **HIGH**; **EXTREME** only when dehydrated, or high activity + health condition, or age ≥60 + health condition
 3. **Heat index 27–32** → base **MODERATE**; any one risk factor → **HIGH**
 4. **Heat index &lt; 27** → base **LOW**; any one risk factor → **MODERATE**
 

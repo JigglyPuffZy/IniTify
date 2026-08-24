@@ -28,18 +28,32 @@ export const appConfig = {
   /** Supabase anon/public key — safe for mobile app */
   supabaseAnonKey: readEnv('EXPO_PUBLIC_SUPABASE_ANON_KEY'),
 
-  /**
-   * Optional backend news API (defaults to Supabase direct read when unset).
-   * e.g. http://192.168.1.100:3001/api/pagasa-news
-   */
-  newsApiUrl: readEnv('EXPO_PUBLIC_NEWS_API_URL'),
-
   /** Decision Tree — rules loaded from src/config/decision-tree.rules.ts */
   decisionTreeModelPath: readEnv('EXPO_PUBLIC_DECISION_TREE_MODEL_PATH'),
 
   /**
-   * Manual heat index entry for risk assessment demo.
-   * NOT live API data — use official DOST-PAGASA Updates for advisories.
+   * Legacy WeatherAPI.com key — unused. Live weather uses Open-Meteo (no key).
+   * Kept so old .env files do not break.
+   */
+  weatherApiKey: readEnv('EXPO_PUBLIC_WEATHERAPI_KEY'),
+
+  /**
+   * Live weather via Open-Meteo — always on (no API key).
+   * @see https://open-meteo.com/en/docs
+   */
+  weatherProvider: 'open-meteo' as const,
+
+  /**
+   * Manual heat index fallback when Open-Meteo is unavailable.
    */
   devManualHeatEnabled: readEnv('EXPO_PUBLIC_DEV_MANUAL_HEAT') === 'true',
+
+  /** OpenAI-compatible API key for conversational check-in (optional) */
+  checkInAiApiKey: readEnv('EXPO_PUBLIC_CHECK_IN_AI_API_KEY'),
+
+  /** Base URL — defaults to OpenAI; use for Azure / compatible proxies */
+  checkInAiBaseUrl: readEnv('EXPO_PUBLIC_CHECK_IN_AI_BASE_URL'),
+
+  /** Model id, e.g. gpt-4o-mini */
+  checkInAiModel: readEnv('EXPO_PUBLIC_CHECK_IN_AI_MODEL'),
 };

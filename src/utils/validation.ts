@@ -14,10 +14,26 @@ export function validateRequired(value: string, field: string): string | null {
   return null;
 }
 
+export function validateEmail(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return 'Email is required.';
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailPattern.test(trimmed)) return 'Enter a valid email address.';
+  return null;
+}
+
+export function validatePassword(value: string): string | null {
+  if (!value) return 'Password is required.';
+  if (value.length < 6) return 'Password must be at least 6 characters.';
+  return null;
+}
+
 export function isUserProfileComplete(factors: UserRiskFactors): boolean {
+  const hasHealth =
+    (factors.healthConditions?.length ?? 0) > 0 || factors.healthCondition !== null;
   return (
     factors.age !== null &&
-    factors.healthCondition !== null &&
+    hasHealth &&
     factors.activityLevel !== null &&
     factors.hydrationStatus !== null
   );

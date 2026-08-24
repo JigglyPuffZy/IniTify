@@ -1,10 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { HeatIndexReading } from '@/src/models/environmental';
+import type { CurrentWeatherSnapshot } from '@/src/models/weather';
 import type { RiskAssessmentResult } from '@/src/models/risk';
 import { FIRST_AID_GUIDANCE } from '@/src/constants/first-aid';
 
 const KEYS = {
   heatReading: '@initify/cache/heat-reading',
+  weather: '@initify/cache/current-weather',
   assessment: '@initify/cache/assessment',
   firstAid: '@initify/cache/first-aid',
 } as const;
@@ -20,6 +22,20 @@ export const offlineCacheService = {
     if (!raw) return null;
     try {
       return JSON.parse(raw) as HeatIndexReading;
+    } catch {
+      return null;
+    }
+  },
+
+  async saveWeather(weather: CurrentWeatherSnapshot): Promise<void> {
+    await AsyncStorage.setItem(KEYS.weather, JSON.stringify(weather));
+  },
+
+  async getLatestWeather(): Promise<CurrentWeatherSnapshot | null> {
+    const raw = await AsyncStorage.getItem(KEYS.weather);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as CurrentWeatherSnapshot;
     } catch {
       return null;
     }

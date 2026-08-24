@@ -1,18 +1,81 @@
 import { useFonts } from 'expo-font';
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+} from '@expo-google-fonts/inter';
+import {
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+} from '@expo-google-fonts/plus-jakarta-sans';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import 'react-native-reanimated';
+import { View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { IniTifyProvider } from '@/src/context/IniTifyContext';
+import { AuthProvider, useAuth } from '@/src/context/AuthContext';
+import { ThemeProvider } from '@/src/context/ThemeContext';
 import { EmergencyActiveMonitor } from '@/src/components/EmergencyActiveMonitor';
+import { useAppTheme } from '@/src/theme/useAppTheme';
 
 export { ErrorBoundary } from 'expo-router';
 
-SplashScreen.preventAutoHideAsync();
+function ThemedStack() {
+  const { palette } = useAppTheme();
+
+  return (
+    <>
+      <StatusBar style={palette.statusBar} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: palette.background },
+          animation: 'slide_from_right',
+        }}
+      >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="setup" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="dashboard" />
+        <Stack.Screen name="pagasa-updates" />
+        <Stack.Screen name="assessment" />
+        <Stack.Screen name="recommendations" />
+        <Stack.Screen name="alerts" />
+        <Stack.Screen name="hospital" />
+        <Stack.Screen name="offline" />
+        <Stack.Screen name="check-in" />
+        <Stack.Screen name="check-in-history" />
+        <Stack.Screen name="health-profile" />
+        <Stack.Screen name="reminder-settings" />
+        <Stack.Screen name="safety-tips" />
+        <Stack.Screen name="+not-found" options={{ headerShown: true, title: 'Not found' }} />
+      </Stack>
+    </>
+  );
+}
+
+function AppRoot() {
+  const { user } = useAuth();
+  const { palette } = useAppTheme();
+
+  return (
+    <View style={{ flex: 1, backgroundColor: palette.background }}>
+      {user ? <EmergencyActiveMonitor /> : null}
+      <ThemedStack />
+    </View>
+  );
+}
 
 export default function RootLayout() {
-  const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+  const [, error] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
   });
 
   useEffect(() => {
@@ -20,32 +83,18 @@ export default function RootLayout() {
   }, [error]);
 
   useEffect(() => {
-    if (loaded) SplashScreen.hideAsync();
-  }, [loaded]);
-
-  if (!loaded) return null;
+    void SplashScreen.hideAsync();
+  }, []);
 
   return (
-    <IniTifyProvider>
-      <EmergencyActiveMonitor />
-      <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: '#006AB1' },
-          headerTintColor: '#ffffff',
-          headerTitleStyle: { fontWeight: '600' },
-        }}
-      >
-        <Stack.Screen name="index" options={{ title: 'IniTify', headerShown: false }} />
-        <Stack.Screen name="setup" options={{ title: 'User Setup' }} />
-        <Stack.Screen name="dashboard" options={{ title: 'Heat-Risk Dashboard' }} />
-        <Stack.Screen name="pagasa-updates" options={{ title: 'DOST-PAGASA Updates' }} />
-        <Stack.Screen name="assessment" options={{ title: 'Risk Assessment' }} />
-        <Stack.Screen name="recommendations" options={{ title: 'Recommendations' }} />
-        <Stack.Screen name="alerts" options={{ title: 'Alerts' }} />
-        <Stack.Screen name="emergency" options={{ title: 'Emergency Assistance' }} />
-        <Stack.Screen name="hospital" options={{ title: 'Hospital & Navigation' }} />
-        <Stack.Screen name="offline" options={{ title: 'Offline Data' }} />
-      </Stack>
-    </IniTifyProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <IniTifyProvider>
+            <AppRoot />
+          </IniTifyProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

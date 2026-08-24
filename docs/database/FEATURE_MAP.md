@@ -24,7 +24,7 @@ Every screen and feature in the app maps to at least one database table.
 
 | Service | Tables |
 |---------|--------|
-| PAGASA / environmental | `heat_index_readings` |
+| WeatherAPI / environmental | `heat_index_readings` |
 | Decision tree | `risk_assessments`, `system_config` |
 | Risk assessment | `risk_assessments` |
 | Recommendations | `recommendation_logs` |
@@ -47,7 +47,7 @@ Every screen and feature in the app maps to at least one database table.
 | 1 | `users` | App user / device |
 | 2 | `user_risk_profiles` | Age, health, activity, hydration |
 | 3 | `emergency_contacts` | Emergency contact name + phone |
-| 4 | `heat_index_readings` | PAGASA / manual heat index |
+| 4 | `heat_index_readings` | WeatherAPI / manual heat index |
 | 5 | `risk_assessments` | Decision tree output |
 | 6 | `recommendation_logs` | Recommendations shown |
 | 7 | `heat_alert_logs` | Alert notifications |
@@ -80,7 +80,7 @@ Every screen and feature in the app maps to at least one database table.
 | Decision tree rules (JSON/TS) | `src/config/decision-tree.rules.ts` |
 | First-aid full text | `src/constants/first-aid.ts` (+ `system_config.first_aid_approved` flag) |
 | Training CSV (120 rows) | `ml/data/heat_risk_dataset.csv` |
-| PAGASA API token | `.env` only (never store in DB) |
+| WeatherAPI key | `.env` only (`EXPO_PUBLIC_WEATHERAPI_KEY`) |
 
 ---
 

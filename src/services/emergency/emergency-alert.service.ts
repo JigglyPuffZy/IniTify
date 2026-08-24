@@ -1,8 +1,8 @@
-import { Alert, Linking } from 'react-native';
+import { Alert } from 'react-native';
 import type { EmergencyState } from '@/src/models/emergency';
 import { EMERGENCY_HOTLINES } from '@/src/config/emergency.config';
-import { notificationService } from '@/src/services/notifications/notification.service';
 import { dialPhoneNumber } from '@/src/services/emergency/emergency-hotline.service';
+import { notificationService } from '@/src/services/notifications/notification.service';
 
 function triggeredIndicatorLabels(state: EmergencyState): string[] {
   const labels: string[] = [];
@@ -21,7 +21,12 @@ export async function notifyEmergencyActive(
   const reasons = triggeredIndicatorLabels(state).join(', ');
   const primaryHotline = EMERGENCY_HOTLINES[0];
 
-  await notificationService.sendEmergencyActiveAlert(reasons);
+  // Best-effort phone push (no-op in Expo Go). Always show Alert below.
+  try {
+    await notificationService.sendEmergencyActiveAlert(reasons);
+  } catch {
+    /* ignore */
+  }
 
   Alert.alert(
     'Emergency ACTIVE',

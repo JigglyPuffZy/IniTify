@@ -1,34 +1,60 @@
-import { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  ScrollView,
-  StyleSheet,
-  Pressable,
-} from 'react-native';
-import { useRouter } from 'expo-router';
+import { useState, useEffect, useMemo } from 'react';
+import { StyleSheet, Text, View, Pressable } from 'react-native';
+import { Redirect, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/src/context/AuthContext';
 import { useIniTify } from '@/src/context/IniTifyContext';
+import { Screen } from '@/src/components/layout/Screen';
+import { SurfaceCard } from '@/src/components/ScreenContainer';
+import { Button } from '@/src/components/UiComponents';
+import { useResponsive } from '@/src/utils/responsive';
 import {
-  ScreenContainer,
-  InfoBanner,
-} from '@/src/components/ScreenContainer';
-import { PrimaryButton } from '@/src/components/UiComponents';
+  FormField,
+  TextField,
+  SegmentedChoice,
+  ChoiceList,
+  FormSection,
+  FormRow,
+  FormProgress,
+} from '@/src/components/FormField';
 import {
   ACTIVITY_LEVELS,
   HYDRATION_STATUSES,
+  GENERAL_STATUSES,
   type UserProfile,
 } from '@/src/models/user';
+import {
+  HEALTH_CONDITION_OPTIONS,
+  finalizeHealthConditions,
+  primaryHealthCondition,
+  splitHealthConditionsForForm,
+} from '@/src/constants/health-conditions';
 import { validateAge, validateRequired } from '@/src/utils/validation';
+import { isProfileComplete } from '@/src/utils/profile-storage';
 import { DISCLAIMER } from '@/src/constants/risk-levels';
+import { DEFAULT_REMINDER_SETTINGS } from '@/src/models/check-in';
+import { radius, spacing, typography } from '@/src/theme';
+import { useAppTheme } from '@/src/theme/useAppTheme';
+import type { AppPalette } from '@/src/theme/palettes';
+
+const STEPS = ['About you', 'Daily habits'] as const;
+const HYDRATION_ICONS = ['water', 'water-outline', 'alert-circle-outline'] as const;
 
 export default function SetupScreen() {
   const router = useRouter();
-  const { saveProfile, saveEmergencyContact, refreshLocation } = useIniTify();
+  const { user } = useAuth();
+  const { saveProfile, saveEmergencyContact, refreshLocation, updateReminderSettings, profile, isLoading } =
+    useIniTify();
+  const { horizontalPadding } = useResponsive();
+  const { palette, isDark } = useAppTheme();
+  const styles = useMemo(() => createSetupStyles(palette, isDark), [palette, isDark]);
 
+  const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
-  const [healthCondition, setHealthCondition] = useState('');
+  const [healthConditions, setHealthConditions] = useState<string[]>(['None']);
+  const [otherHealthCondition, setOtherHealthCondition] = useState('');
+  const [generalStatus, setGeneralStatus] = useState('Feeling Well');
   const [activityLevel, setActivityLevel] = useState('');
   const [hydrationStatus, setHydrationStatus] = useState('');
   const [contactName, setContactName] = useState('');
@@ -36,34 +62,97 @@ export default function SetupScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
-  function validate(): boolean {
+  useEffect(() => {
+    if (!profile) return;
+    setName(profile.name);
+    setAge(profile.riskFactors.age?.toString() ?? '');
+    const parsed = splitHealthConditionsForForm(profile.riskFactors.healthConditions ?? ['None']);
+    setHealthConditions(parsed.chips);
+    setOtherHealthCondition(parsed.otherDetail);
+    setActivityLevel(profile.riskFactors.activityLevel ?? '');
+    setHydrationStatus(profile.riskFactors.hydrationStatus ?? '');
+    setGeneralStatus(profile.riskFactors.generalStatus ?? 'Feeling Well');
+  }, [profile]);
+
+  useEffect(() => {
+    if (profile?.name || !user?.displayName) return;
+    setName(user.displayName);
+  }, [profile?.name, user?.displayName]);
+
+  function toggleHealthCondition(condition: string) {
+    if (condition === 'None') {
+      setHealthConditions(['None']);
+      setOtherHealthCondition('');
+      return;
+    }
+    setHealthConditions((prev) => {
+      const withoutNone = prev.filter((c) => c !== 'None');
+      if (withoutNone.includes(condition)) {
+        const next = withoutNone.filter((c) => c !== condition);
+        if (condition === 'Other') setOtherHealthCondition('');
+        return next.length ? next : ['None'];
+      }
+      return [...withoutNone, condition];
+    });
+  }
+
+  function validateStep1(): boolean {
     const next: Record<string, string> = {};
     const nameErr = validateRequired(name, 'Name');
     if (nameErr) next.name = nameErr;
     const ageErr = validateAge(age);
     if (ageErr) next.age = ageErr;
-    const healthErr = validateRequired(healthCondition, 'Health condition');
-    if (healthErr) next.healthCondition = healthErr;
-    if (!activityLevel) next.activityLevel = 'Activity level is required.';
-    if (!hydrationStatus) next.hydrationStatus = 'Hydration status is required.';
+    if (!healthConditions.length) next.healthCondition = 'Select at least one health option.';
+    if (healthConditions.includes('Other') && !otherHealthCondition.trim()) {
+      next.otherHealthCondition = 'Please describe your other health condition.';
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   }
 
+  function validateStep2(): boolean {
+    const next: Record<string, string> = {};
+    if (!activityLevel) next.activityLevel = 'Pick the activity level that fits you best.';
+    if (!hydrationStatus) next.hydrationStatus = 'Pick how hydrated you usually are.';
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  }
+
+  function handleNext() {
+    if (step === 1 && validateStep1()) {
+      setErrors({});
+      setStep(2);
+    }
+  }
+
+  function handleBack() {
+    if (step === 2) {
+      setErrors({});
+      setStep(1);
+    } else if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  }
+
   async function handleSave() {
-    if (!validate()) return;
+    if (!validateStep2()) return;
     setSaving(true);
     try {
-      const profile: UserProfile = {
+      const resolvedConditions = finalizeHealthConditions(healthConditions, otherHealthCondition);
+      const profileData: UserProfile = {
         name: name.trim(),
         riskFactors: {
           age: Number(age),
-          healthCondition: healthCondition.trim(),
+          healthConditions: resolvedConditions,
+          healthCondition: primaryHealthCondition(resolvedConditions),
           activityLevel,
           hydrationStatus,
+          generalStatus,
         },
       };
-      await saveProfile(profile);
+      await saveProfile(profileData);
       const contact =
         contactName.trim() && contactPhone.trim()
           ? { name: contactName.trim(), phone: contactPhone.trim() }
@@ -71,176 +160,274 @@ export default function SetupScreen() {
       if (contact) {
         await saveEmergencyContact(contact);
       }
-      const { databaseService } = await import('@/src/services/database/database.service');
-      void databaseService.sync.syncUserProfile(profile, contact);
-      await refreshLocation();
-      router.replace('/dashboard');
+
+      try {
+        await updateReminderSettings({ ...DEFAULT_REMINDER_SETTINGS });
+      } catch {
+        /* reminders are optional — profile save is enough */
+      }
+
+      // Location is optional during setup; never block finish on permission APIs.
+      try {
+        await refreshLocation();
+      } catch {
+        /* ignore location failures */
+      }
+
+      router.replace('/(tabs)/home');
     } finally {
       setSaving(false);
     }
   }
 
+  const heroTitles = [
+    { title: 'About you', subtitle: 'Basic details for your heat-risk profile' },
+    { title: 'Daily habits', subtitle: 'How active you are and how you stay hydrated' },
+  ] as const;
+
+  const hero = heroTitles[step - 1];
+
+  if (!user) return <Redirect href="/(auth)/login" />;
+  if (!isLoading && isProfileComplete(profile)) return <Redirect href="/(tabs)/home" />;
+
   return (
-    <ScrollView style={styles.scroll}>
-      <ScreenContainer title="Risk Factor Setup">
-        <InfoBanner message={DISCLAIMER} variant="info" />
+    <Screen
+      overline={`Step ${step} of ${STEPS.length}`}
+      title={hero.title}
+      subtitle={hero.subtitle}
+      back
+      onBackPress={handleBack}
+      horizontalPadding={horizontalPadding}
+    >
+      <FormProgress current={step} total={STEPS.length} labels={[...STEPS]} />
 
-        <Field label="Name" error={errors.name}>
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-            placeholder="Your name"
-            autoCapitalize="words"
-          />
-        </Field>
-
-        <Field label="Age" error={errors.age}>
-          <TextInput
-            style={styles.input}
-            value={age}
-            onChangeText={setAge}
-            placeholder="Age"
-            keyboardType="number-pad"
-          />
-        </Field>
-
-        <Field label="Health Condition" error={errors.healthCondition}>
-          <TextInput
-            style={styles.input}
-            value={healthCondition}
-            onChangeText={setHealthCondition}
-            placeholder="e.g. None, Hypertension"
-          />
-        </Field>
-
-        <Field label="Activity Level" error={errors.activityLevel}>
-          <OptionPicker
-            options={[...ACTIVITY_LEVELS]}
-            selected={activityLevel}
-            onSelect={setActivityLevel}
-          />
-        </Field>
-
-        <Field label="Hydration Status" error={errors.hydrationStatus}>
-          <OptionPicker
-            options={[...HYDRATION_STATUSES]}
-            selected={hydrationStatus}
-            onSelect={setHydrationStatus}
-          />
-        </Field>
-
-        <Text style={styles.sectionTitle}>Emergency Contact (optional)</Text>
-        <Field label="Contact Name">
-          <TextInput
-            style={styles.input}
-            value={contactName}
-            onChangeText={setContactName}
-            placeholder="Emergency contact name"
-          />
-        </Field>
-        <Field label="Contact Phone">
-          <TextInput
-            style={styles.input}
-            value={contactPhone}
-            onChangeText={setContactPhone}
-            placeholder="Phone number"
-            keyboardType="phone-pad"
-          />
-        </Field>
-
-        <PrimaryButton
-          label={saving ? 'Saving...' : 'Save & Continue'}
-          onPress={handleSave}
-          disabled={saving}
-        />
-      </ScreenContainer>
-    </ScrollView>
-  );
-}
-
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      {children}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-    </View>
-  );
-}
-
-function OptionPicker({
-  options,
-  selected,
-  onSelect,
-}: {
-  options: string[];
-  selected: string;
-  onSelect: (v: string) => void;
-}) {
-  return (
-    <View style={styles.options}>
-      {options.map((opt) => (
-        <Pressable
-          key={opt}
-          onPress={() => onSelect(opt)}
-          style={[styles.option, selected === opt && styles.optionSelected]}
-        >
-          <Text
-            style={[
-              styles.optionText,
-              selected === opt && styles.optionTextSelected,
-            ]}
+      {step === 1 ? (
+        <SurfaceCard>
+          <FormSection
+            step={1}
+            title="Personal details"
+            description="Used to calculate your personalized heat risk"
           >
-            {opt}
-          </Text>
-        </Pressable>
-      ))}
-    </View>
+            <FormRow>
+              <View style={styles.nameField}>
+                <FormField label="Full name" required error={errors.name}>
+                  <TextField
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="Your full name"
+                    autoCapitalize="words"
+                    autoComplete="name"
+                    error={!!errors.name}
+                    icon="person-outline"
+                  />
+                </FormField>
+              </View>
+              <View style={styles.ageField}>
+                <FormField label="Age" required error={errors.age}>
+                  <TextField
+                    value={age}
+                    onChangeText={setAge}
+                    placeholder="Yrs"
+                    keyboardType="number-pad"
+                    error={!!errors.age}
+                    icon="calendar-outline"
+                  />
+                </FormField>
+              </View>
+            </FormRow>
+
+            <FormField
+              label="Health conditions"
+              required
+              hint="Select all that apply"
+              error={errors.healthCondition}
+            >
+              <View style={styles.chipGrid}>
+                {HEALTH_CONDITION_OPTIONS.map((condition) => {
+                  const active = healthConditions.includes(condition);
+                  return (
+                    <Pressable
+                      key={condition}
+                      style={[styles.chip, active && styles.chipActive]}
+                      onPress={() => toggleHealthCondition(condition)}
+                    >
+                      <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                        {condition}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </FormField>
+
+            {healthConditions.includes('Other') ? (
+              <FormField
+                label="Describe other condition"
+                required
+                hint="Type your health condition"
+                error={errors.otherHealthCondition}
+              >
+                <TextField
+                  value={otherHealthCondition}
+                  onChangeText={setOtherHealthCondition}
+                  placeholder="e.g. COPD, anemia, etc."
+                  autoCapitalize="sentences"
+                  error={!!errors.otherHealthCondition}
+                  icon="create-outline"
+                />
+              </FormField>
+            ) : null}
+          </FormSection>
+
+          <View style={styles.infoTip}>
+            <Ionicons name="shield-checkmark-outline" size={16} color={palette.primary} />
+            <Text style={styles.infoTipText}>
+              Your data stays on this device and is only used for heat-risk guidance.
+            </Text>
+          </View>
+        </SurfaceCard>
+      ) : (
+        <>
+          <SurfaceCard>
+            <FormSection
+              step={2}
+              title="Activity & hydration"
+              description="These help refine your risk level during hot days"
+            >
+              <FormField label="Usual activity level" required error={errors.activityLevel}>
+                <SegmentedChoice
+                  options={[...ACTIVITY_LEVELS]}
+                  selected={activityLevel}
+                  onSelect={setActivityLevel}
+                />
+              </FormField>
+
+              <FormField label="How hydrated are you usually?" required error={errors.hydrationStatus}>
+                <ChoiceList
+                  options={[...HYDRATION_STATUSES]}
+                  icons={[...HYDRATION_ICONS]}
+                  selected={hydrationStatus}
+                  onSelect={setHydrationStatus}
+                />
+              </FormField>
+
+              <FormField label="Current general status">
+                <ChoiceList
+                  options={[...GENERAL_STATUSES]}
+                  selected={generalStatus}
+                  onSelect={setGeneralStatus}
+                />
+              </FormField>
+            </FormSection>
+          </SurfaceCard>
+
+          <SurfaceCard style={styles.optionalCard}>
+            <FormSection
+              title="Emergency contact"
+              description="Optional — someone we can help you reach quickly"
+              icon="call-outline"
+            >
+              <FormRow>
+                <View style={styles.halfField}>
+                  <FormField label="Name">
+                    <TextField
+                      value={contactName}
+                      onChangeText={setContactName}
+                      placeholder="Contact name"
+                      icon="person-outline"
+                    />
+                  </FormField>
+                </View>
+                <View style={styles.halfField}>
+                  <FormField label="Phone">
+                    <TextField
+                      value={contactPhone}
+                      onChangeText={setContactPhone}
+                      placeholder="09xx xxx xxxx"
+                      keyboardType="phone-pad"
+                      icon="call-outline"
+                    />
+                  </FormField>
+                </View>
+              </FormRow>
+            </FormSection>
+          </SurfaceCard>
+        </>
+      )}
+
+      <View style={styles.actions}>
+        {step === 2 ? (
+          <Button
+            label="Back"
+            variant="ghost"
+            onPress={() => {
+              setErrors({});
+              setStep(1);
+            }}
+            fullWidth={false}
+            icon="chevron-back"
+          />
+        ) : null}
+        <View style={styles.primaryAction}>
+          {step === 1 ? (
+            <Button label="Continue" onPress={handleNext} icon="arrow-forward" />
+          ) : (
+            <Button
+              label={saving ? 'Saving…' : 'Save and start'}
+              onPress={handleSave}
+              disabled={saving}
+              loading={saving}
+              icon="checkmark-circle"
+            />
+          )}
+        </View>
+      </View>
+
+      <Text style={styles.disclaimer}>{DISCLAIMER}</Text>
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  scroll: { flex: 1 },
-  field: { marginBottom: 16 },
-  label: { fontSize: 14, fontWeight: '600', color: '#334155', marginBottom: 6 },
-  input: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 15,
-    color: '#0f172a',
-  },
-  error: { fontSize: 12, color: '#dc2626', marginTop: 4 },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0f172a',
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  options: { gap: 8 },
-  option: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    padding: 12,
-  },
-  optionSelected: {
-    borderColor: '#006AB1',
-    backgroundColor: '#eff6ff',
-  },
-  optionText: { fontSize: 14, color: '#64748b' },
-  optionTextSelected: { color: '#006AB1', fontWeight: '600' },
-});
+function createSetupStyles(palette: AppPalette, isDark: boolean) {
+  return StyleSheet.create({
+    nameField: { flex: 2, minWidth: 0 },
+    ageField: { flex: 1, minWidth: 88, maxWidth: 110 },
+    halfField: { flex: 1, minWidth: 0 },
+    infoTip: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing.sm,
+      backgroundColor: palette.primarySoft,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      marginTop: spacing.sm,
+    },
+    infoTipText: { ...typography.caption, color: palette.textSecondary, flex: 1, lineHeight: 17 },
+    chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+    chip: {
+      borderWidth: 1.5,
+      borderColor: palette.border,
+      borderRadius: radius.pill,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      backgroundColor: isDark ? palette.surface : palette.surfaceInset,
+    },
+    chipActive: { backgroundColor: palette.primary, borderColor: palette.primary },
+    chipText: { fontSize: 13, color: palette.text, fontWeight: '500' },
+    chipTextActive: { color: '#FFFFFF', fontWeight: '600' },
+    optionalCard: { borderStyle: 'dashed' as const },
+    actions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    primaryAction: { flex: 1, minWidth: 0 },
+    disclaimer: {
+      ...typography.caption,
+      color: palette.textLight,
+      textAlign: 'center',
+      lineHeight: 18,
+      marginTop: -spacing.sm,
+    },
+  });
+}

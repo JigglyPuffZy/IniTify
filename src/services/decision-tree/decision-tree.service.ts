@@ -12,6 +12,12 @@ export interface DecisionTreeOutput {
   evaluatedAt: string;
   rulesVersion: string;
   rulesSource?: string;
+  riskScore: number;
+  environmentalLevel: HeatRiskLevel;
+  vulnerabilityScore: number;
+  primaryRiskFactors: string[];
+  reason: string;
+  recommendedAction: string;
 }
 
 /**
@@ -80,13 +86,16 @@ export const decisionTreeService = {
 
     const result = evaluateDecisionTree(decisionTreeRules, {
       heatIndex: input.heatIndex,
+      humidityPercent: input.humidityPercent ?? null,
       age: input.age,
       healthCondition: input.healthCondition,
+      healthConditions: input.healthConditions,
       activityLevel: input.activityLevel,
       hydrationStatus: input.hydrationStatus,
+      generalStatus: input.generalStatus,
     });
 
-    if (result.error || !result.level) {
+    if (result.error || !result.level || !result.assessment) {
       return {
         status: 'error',
         data: null,
@@ -94,13 +103,21 @@ export const decisionTreeService = {
       };
     }
 
+    const { assessment } = result;
+
     return {
       status: 'success',
       data: {
-        level: result.level,
+        level: assessment.level,
         evaluatedAt: new Date().toISOString(),
         rulesVersion: decisionTreeRules.version,
         rulesSource: decisionTreeRules.source,
+        riskScore: assessment.riskScore,
+        environmentalLevel: assessment.environmentalLevel,
+        vulnerabilityScore: assessment.vulnerabilityScore,
+        primaryRiskFactors: assessment.primaryRiskFactors,
+        reason: assessment.reason,
+        recommendedAction: assessment.recommendedAction,
       },
       message: 'Decision Tree evaluation complete.',
     };

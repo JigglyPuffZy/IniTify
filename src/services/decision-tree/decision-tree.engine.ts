@@ -5,6 +5,7 @@ import type {
   DecisionTreeOperator,
   DecisionTreeRulesDocument,
 } from './decision-tree.types';
+import { assessHeatRisk } from './heat-risk-classifier';
 
 function getFeatureValue(
   input: DecisionTreeInput,
@@ -13,6 +14,8 @@ function getFeatureValue(
   switch (feature) {
     case 'heatIndex':
       return input.heatIndex;
+    case 'humidityPercent':
+      return input.humidityPercent ?? null;
     case 'age':
       return input.age;
     case 'healthCondition':
@@ -21,6 +24,8 @@ function getFeatureValue(
       return input.activityLevel;
     case 'hydrationStatus':
       return input.hydrationStatus;
+    case 'generalStatus':
+      return input.generalStatus ?? null;
     default:
       return null;
   }
@@ -92,28 +97,34 @@ function walkTree(
 
 export function evaluateDecisionTree(
   rules: DecisionTreeRulesDocument,
-  input: DecisionTreeInput,
-): { level: HeatRiskLevel | null; error: string | null } {
+  input: DecisionTreeInput & { generalStatus?: string | null },
+): {
+  level: HeatRiskLevel | null;
+  assessment: ReturnType<typeof assessHeatRisk>;
+  error: string | null;
+} {
   if (!rules.enabled) {
     return {
       level: null,
+      assessment: null,
       error:
-        'Decision Tree rules are not enabled. Set enabled:true in decision-tree.rules.json with your research document rules.',
+        'Decision Tree rules are not enabled. Set enabled:true in decision-tree.rules.ts.',
     };
   }
 
-  if (!rules.root) {
-    return { level: null, error: 'Decision Tree rules missing root node.' };
-  }
-
   try {
-    const level = walkTree(rules.root, input);
-    if (!level) {
-      return { level: null, error: 'Decision Tree did not resolve a risk level.' };
+    const assessment = assessHeatRisk(input);
+    if (!assessment) {
+      return {
+        level: null,
+        assessment: null,
+        error:
+          'Decision Tree missing inputs. Complete age, health, activity, hydration, and heat index.',
+      };
     }
-    return { level, error: null };
+    return { level: assessment.level, assessment, error: null };
   } catch {
-    return { level: null, error: 'Decision Tree evaluation failed.' };
+    return { level: null, assessment: null, error: 'Decision Tree evaluation failed.' };
   }
 }
 

@@ -1,40 +1,40 @@
-import { Link, Stack } from 'expo-router';
-import { StyleSheet } from 'react-native';
-
-import { Text, View } from '@/components/Themed';
+import { useRouter, Stack } from 'expo-router';
+import { useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { EmptyState } from '@/src/components/ScreenContainer';
+import { Button } from '@/src/components/UiComponents';
+import { layout, spacing } from '@/src/theme';
+import { useAppTheme } from '@/src/theme/useAppTheme';
+import type { LegacyThemeColors } from '@/src/theme/legacy-colors';
 
 export default function NotFoundScreen() {
+  const router = useRouter();
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <>
-      <Stack.Screen options={{ title: 'Oops!' }} />
+      <Stack.Screen options={{ title: 'Page not found' }} />
       <View style={styles.container}>
-        <Text style={styles.title}>This screen doesn't exist.</Text>
-
-        <Link href="/" style={styles.link}>
-          <Text style={styles.linkText}>Go to home screen!</Text>
-        </Link>
+        <EmptyState
+          title="This page doesn't exist"
+          message="The screen you're looking for isn't available. Return to Home to continue."
+          icon="map-outline"
+        />
+        <Button label="Go to Home" onPress={() => router.replace('/home')} icon="home-outline" />
       </View>
     </>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  link: {
-    marginTop: 15,
-    paddingVertical: 15,
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#2e78b7',
-  },
-});
+function createStyles(colors: LegacyThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      padding: layout.pagePadding,
+      justifyContent: 'center',
+      gap: spacing.lg,
+    },
+  });
+}

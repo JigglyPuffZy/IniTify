@@ -4,19 +4,57 @@ import {
   toHeatIndexReading,
 } from '@/src/services/environmental/environmental-pipeline';
 import { environmentalService } from '@/src/services/environmental/environmental.service';
+import { fetchOpenMeteoCurrent } from '@/src/services/environmental/open-meteo-client';
 import { computeHeatIndexFromTempHumidity } from '@/src/services/environmental/pagasa/heat-index-calculator';
-import { pagasaNewsService } from '@/src/services/pagasa-news/pagasa-news.service';
 import { decisionTreeService } from '@/src/services/decision-tree/decision-tree.service';
 import {
   evaluateDecisionTree,
   validateRulesDocument,
 } from '@/src/services/decision-tree/decision-tree.engine';
+import { assessHeatRisk } from '@/src/services/decision-tree/heat-risk-classifier';
 import type { DecisionTreeRulesDocument } from '@/src/services/decision-tree/decision-tree.types';
 import { riskAssessmentService } from '@/src/services/risk-assessment/risk-assessment.service';
 import { recommendationService } from '@/src/services/recommendations/recommendation.service';
 import { emergencyService } from '@/src/services/emergency/emergency.service';
 import { validateAge, isUserProfileComplete } from '@/src/utils/validation';
+import { TUGUEGARAO_STUDY_AREA } from '@/src/constants/study-area';
 
+jest.mock('@/src/services/environmental/open-meteo-client', () => ({
+  fetchOpenMeteoCurrent: jest.fn(),
+}));
+
+jest.mock('@/src/services/offline-cache/offline-cache.service', () => ({
+  offlineCacheService: {
+    saveHeatReading: jest.fn(async () => undefined),
+    getLatestHeatReading: jest.fn(async () => null),
+    saveWeather: jest.fn(async () => undefined),
+    getLatestWeather: jest.fn(async () => null),
+  },
+}));
+
+const mockedFetchOpenMeteo = fetchOpenMeteoCurrent as jest.MockedFunction<
+  typeof fetchOpenMeteoCurrent
+>;
+
+function mockOpenMeteoWeather(
+  overrides: Partial<Awaited<ReturnType<typeof fetchOpenMeteoCurrent>>> = {},
+) {
+  mockedFetchOpenMeteo.mockResolvedValue({
+    locationName: TUGUEGARAO_STUDY_AREA.city,
+    tempC: 33,
+    feelsLikeC: 36,
+    heatIndexC: 36,
+    humidity: 70,
+    conditionText: 'Partly cloudy',
+    conditionIconUrl: '',
+    windKph: 10,
+    windDir: 'N',
+    isDay: true,
+    lastUpdated: new Date().toISOString(),
+    source: 'open-meteo',
+    ...overrides,
+  });
+}
 describe('validation', () => {
   it('validates age', () => {
     expect(validateAge('25')).toBeNull();
@@ -49,6 +87,10 @@ describe('heat index calculator', () => {
 });
 
 describe('environmental pipeline', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('cleans and validates heat index data', () => {
     const cleaned = cleanHeatIndexData({ heatIndex: 38, latitude: 14.5, longitude: 121.0 });
     expect(validateHeatIndexReading(cleaned).valid).toBe(true);
@@ -57,24 +99,37 @@ describe('environmental pipeline', () => {
     expect(reading?.source).toBe('manual');
   });
 
-  it('returns cached or unavailable without live PAGASA API', async () => {
+  it('returns success, cached, or unavailable from Open-Meteo fetch', async () => {
+    mockOpenMeteoWeather({ heatIndexC: 36 });
+
     const result = await environmentalService.fetchHeatIndex(14.5, 121.0);
-    expect(['unavailable', 'cached']).toContain(result.status);
+    expect(['success', 'unavailable', 'cached', 'invalid']).toContain(result.status);
+    expect(mockedFetchOpenMeteo).toHaveBeenCalledWith(14.5, 121.0);
   });
 
-  it('reports news-feed provider status', () => {
+  it('reports open-meteo as the weather provider', () => {
     const status = environmentalService.getProviderStatus();
-    expect(status.provider).toBe('news-feed');
+    expect(status.provider).toBe('open-meteo');
+    expect(status.configured).toBe(true);
+  });
+
+  it('defaults heat fetch to Tuguegarao City when coordinates are omitted', async () => {
+    mockOpenMeteoWeather({ heatIndexC: 34 });
+
+    const result = await environmentalService.fetchHeatIndex(null, null);
+    expect(['success', 'cached', 'unavailable']).toContain(result.status);
+    expect(mockedFetchOpenMeteo).toHaveBeenCalledWith(
+      TUGUEGARAO_STUDY_AREA.latitude,
+      TUGUEGARAO_STUDY_AREA.longitude,
+    );
+    if (result.status === 'success' && result.data) {
+      expect(result.data.latitude).toBe(TUGUEGARAO_STUDY_AREA.latitude);
+      expect(result.data.longitude).toBe(TUGUEGARAO_STUDY_AREA.longitude);
+    }
   });
 });
 
-describe('pagasa news service', () => {
-  it('formats category emoji', () => {
-    expect(pagasaNewsService.categoryEmoji('Rainfall Warning')).toBe('🌧️');
-  });
-});
-
-describe('PH date partitioning for PAGASA news', () => {
+describe('PH date partitioning', () => {
   const { partitionUpdatesByPhDate } = require('@/src/utils/ph-date');
 
   it('puts items with today published_at in today bucket', () => {
@@ -141,11 +196,11 @@ describe('decision tree engine', () => {
       activityLevel: 'Low',
       hydrationStatus: 'Well hydrated',
     });
-    expect(result.level).toBe('HIGH');
+    expect(result.level).toBe('EXTREME');
     expect(result.error).toBeNull();
   });
 
-  it('walks false branch', () => {
+  it('escalates moderate heat with dehydration', () => {
     const result = evaluateDecisionTree(sampleRules, {
       heatIndex: 30,
       age: 30,
@@ -153,7 +208,7 @@ describe('decision tree engine', () => {
       activityLevel: 'Low',
       hydrationStatus: 'Dehydrated',
     });
-    expect(result.level).toBe('MODERATE');
+    expect(result.level).toBe('HIGH');
   });
 
   it('rejects disabled rules', () => {
@@ -197,6 +252,34 @@ describe('decision tree service', () => {
     expect(result.data?.level).toBe('EXTREME');
   });
 
+  it('keeps typical Tuguegarao afternoon at HIGH with one health factor', () => {
+    const result = decisionTreeService.evaluate({
+      heatIndex: 40.7,
+      age: 25,
+      healthCondition: 'Hypertension / High Blood Pressure',
+      activityLevel: 'Low',
+      hydrationStatus: 'Well hydrated',
+      latitude: 17.6,
+      longitude: 121.7,
+    });
+    expect(result.status).toBe('success');
+    expect(result.data?.level).toBe('HIGH');
+  });
+
+  it('escalates to EXTREME when dehydration meets high heat index', () => {
+    const result = decisionTreeService.evaluate({
+      heatIndex: 40.7,
+      age: 25,
+      healthCondition: 'None',
+      activityLevel: 'Low',
+      hydrationStatus: 'Dehydrated',
+      latitude: 17.6,
+      longitude: 121.7,
+    });
+    expect(result.status).toBe('success');
+    expect(result.data?.level).toBe('EXTREME');
+  });
+
   it('escalates moderate heat with dehydration', () => {
     const result = decisionTreeService.evaluate({
       heatIndex: 30,
@@ -223,6 +306,129 @@ describe('decision tree service', () => {
     });
     expect(result.status).toBe('success');
     expect(result.data?.level).toBe('LOW');
+  });
+
+  it('classifies moderate heat with no risk factors', () => {
+    const result = decisionTreeService.evaluate({
+      heatIndex: 29,
+      age: 25,
+      healthCondition: 'None',
+      activityLevel: 'Low',
+      hydrationStatus: 'Well hydrated',
+      latitude: 17.6,
+      longitude: 121.7,
+    });
+    expect(result.status).toBe('success');
+    expect(result.data?.level).toBe('MODERATE');
+  });
+
+  it('escalates to EXTREME when high activity meets health condition in hot band', () => {
+    const result = decisionTreeService.evaluate({
+      heatIndex: 38,
+      age: 25,
+      healthCondition: 'Diabetes',
+      activityLevel: 'High',
+      hydrationStatus: 'Well hydrated',
+      latitude: 17.6,
+      longitude: 121.7,
+    });
+    expect(result.status).toBe('success');
+    expect(result.data?.level).toBe('EXTREME');
+  });
+
+  it('uses generalStatus from check-in as a risk factor', () => {
+    const result = decisionTreeService.evaluate({
+      heatIndex: 40,
+      age: 25,
+      healthCondition: 'None',
+      activityLevel: 'Low',
+      hydrationStatus: 'Well hydrated',
+      generalStatus: 'Not Feeling Well',
+      latitude: 17.6,
+      longitude: 121.7,
+    });
+    expect(result.status).toBe('success');
+    expect(result.data?.level).toBe('EXTREME');
+  });
+});
+
+describe('vulnerability-aware heat risk', () => {
+  it('does not assign risk from temperature alone — healthy user low heat', () => {
+    const result = assessHeatRisk({
+      heatIndex: 24,
+      age: 30,
+      healthCondition: 'None',
+      activityLevel: 'Low',
+      hydrationStatus: 'Well hydrated',
+      generalStatus: 'Feeling Well',
+    });
+    expect(result?.level).toBe('LOW');
+    expect(result?.environmentalLevel).toBe('LOW');
+    expect(result?.vulnerabilityScore).toBe(0);
+    expect(result?.reason).toContain('no significant personal');
+  });
+
+  it('escalates moderate environmental heat when user has hypertension', () => {
+    const result = assessHeatRisk({
+      heatIndex: 29,
+      age: 45,
+      healthCondition: 'Hypertension / High Blood Pressure',
+      healthConditions: ['Hypertension / High Blood Pressure'],
+      activityLevel: 'Low',
+      hydrationStatus: 'Well hydrated',
+      generalStatus: 'Feeling Well',
+    });
+    expect(result?.environmentalLevel).toBe('MODERATE');
+    expect(result?.level).toBe('HIGH');
+    expect(result?.primaryRiskFactors.some((f) => f.includes('Hypertension'))).toBe(true);
+    expect(result?.reason).toContain('personal vulnerability');
+  });
+
+  it('raises risk for hypertension even when environmental heat is low', () => {
+    const result = assessHeatRisk({
+      heatIndex: 24,
+      age: 50,
+      healthCondition: 'Hypertension / High Blood Pressure',
+      healthConditions: ['Hypertension / High Blood Pressure'],
+      activityLevel: 'Low',
+      hydrationStatus: 'Well hydrated',
+      generalStatus: 'Feeling Well',
+    });
+    expect(result?.environmentalLevel).toBe('LOW');
+    expect(result?.level).toBe('MODERATE');
+  });
+
+  it('returns explainable output with score, factors, and guidance', () => {
+    const result = assessHeatRisk({
+      heatIndex: 38,
+      humidityPercent: 75,
+      age: 65,
+      healthCondition: 'Heart Disease',
+      healthConditions: ['Heart Disease', 'Diabetes'],
+      activityLevel: 'High',
+      hydrationStatus: 'Dehydrated',
+      generalStatus: 'Mild Discomfort',
+    });
+    expect(result).not.toBeNull();
+    expect(result!.riskScore).toBeGreaterThan(50);
+    expect(result!.primaryRiskFactors.length).toBeGreaterThan(2);
+    expect(result!.reason).toMatch(/^Risk level:/);
+    expect(result!.recommendedAction.length).toBeGreaterThan(10);
+    expect(result!.level).toBe('EXTREME');
+  });
+
+  it('does not auto-assign EXTREME for hypertension alone at moderate heat', () => {
+    const result = assessHeatRisk({
+      heatIndex: 30,
+      age: 40,
+      healthCondition: 'Hypertension / High Blood Pressure',
+      healthConditions: ['Hypertension / High Blood Pressure'],
+      activityLevel: 'Low',
+      hydrationStatus: 'Well hydrated',
+      generalStatus: 'Feeling Well',
+    });
+    expect(result?.level).toBe('HIGH');
+    expect(result?.level).not.toBe('EXTREME');
   });
 });
 
@@ -257,12 +463,12 @@ describe('recommendations', () => {
 });
 
 describe('emergency active alert', () => {
-  it('sends local notification when emergency becomes active', async () => {
+  it('returns unavailable for phone push (in-app alerts used instead)', async () => {
     const { notificationService } = require('@/src/services/notifications/notification.service');
     const result = await notificationService.sendEmergencyActiveAlert(
       'Extreme heat risk, Repeated failed safety prompts',
     );
-    expect(result.status).toBe('success');
+    expect(result.status).toBe('unavailable');
   });
 });
 
@@ -293,9 +499,23 @@ describe('emergency service', () => {
 
 describe('first-aid guidance', () => {
   it('loads approved sections', () => {
-    const { FIRST_AID_GUIDANCE } = require('@/src/constants/first-aid');
+    const {
+      FIRST_AID_GUIDANCE,
+      getFirstAidGuidanceForConditions,
+    } = require('@/src/constants/first-aid');
     expect(FIRST_AID_GUIDANCE.isApproved).toBe(true);
     expect(FIRST_AID_GUIDANCE.sections.length).toBeGreaterThan(0);
+
+    const diabetes = getFirstAidGuidanceForConditions(['Diabetes'], 'Diabetes');
+    expect(diabetes.conditionBlocks).toHaveLength(1);
+    expect(diabetes.conditionBlocks[0].conditionLabel).toBe('Diabetes');
+    expect(diabetes.conditionBlocks[0].sections[0].heading).toMatch(/blood sugar|Check/i);
+
+    const multi = getFirstAidGuidanceForConditions(
+      ['Diabetes', 'Asthma'],
+      'Diabetes',
+    );
+    expect(multi.conditionBlocks).toHaveLength(2);
   });
 });
 

@@ -80,7 +80,7 @@ const moderateHeatBranch = {
   },
 };
 
-/** High heat-index band (33–41 °C) with factor escalation to Extreme */
+/** High heat-index band (33–41 °C) — PAGASA “extreme caution” */
 const highHeatBranch = {
   type: 'split' as const,
   feature: 'hydrationStatus' as const,
@@ -92,14 +92,20 @@ const highHeatBranch = {
     feature: 'activityLevel' as const,
     operator: '==' as const,
     value: 'High',
-    true: EXTREME,
+    true: {
+      type: 'split' as const,
+      feature: 'healthCondition' as const,
+      operator: 'not_in' as const,
+      value: ['none', 'n/a', 'no condition', 'healthy', ''],
+      true: EXTREME,
+      false: HIGH,
+    },
     false: {
       type: 'split' as const,
       feature: 'age' as const,
       operator: '>=' as const,
       value: 60,
-      true: EXTREME,
-      false: {
+      true: {
         type: 'split' as const,
         feature: 'healthCondition' as const,
         operator: 'not_in' as const,
@@ -107,17 +113,18 @@ const highHeatBranch = {
         true: EXTREME,
         false: HIGH,
       },
+      false: HIGH,
     },
   },
 };
 
 const decisionTreeRules: DecisionTreeRulesDocument = {
   enabled: true,
-  version: '1.0.0-trained',
+  version: '1.1.0-balanced',
   description:
-    'Expert-labeled dataset (120 rows) + PAGASA iHeatMap bands. Sklearn accuracy 79% on holdout; app rules match dataset 100%.',
+    'PAGASA iHeatMap bands with balanced escalation — EXTREME at ≥42°C heat index, or dehydration / combined risk factors in the 33–41°C band.',
   source:
-    'HeatHits ml/data/heat_risk_dataset.csv — Python sklearn training 2026-08-12. See ml/output/TRAINING_RESULTS.md',
+    'IniTify field tuning 2026-08-12 — reduces false EXTREME when only one risk factor is present in Tuguegarao’s typical 33–41°C heat-index range.',
   root: {
     type: 'split',
     feature: 'heatIndex',

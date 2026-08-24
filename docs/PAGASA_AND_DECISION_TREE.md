@@ -1,49 +1,21 @@
-# DOST-PAGASA & Decision Tree Integration
+# Weather Data & Decision Tree
 
-## DOST-PAGASA (Environmental Heat Data)
+## Live heat index (Open-Meteo)
 
-### Official data sources
+IniTify uses **[Open-Meteo](https://open-meteo.com/)** for live temperature, humidity, and heat index in Tuguegarao City. **No API key** is required.
 
-| Source | Type | Heat Index |
-|---|---|---|
-| **iHeatMap** | Web portal only | Direct HI — no public API |
-| **TenDay Weather Forecast API** | Official DOST-PAGASA API | Temperature + humidity — HI computed |
-| **Custom endpoint** | Your approved backend | Direct HI if endpoint provides it |
+Endpoint:
 
-### TenDay API setup
-
-1. Request API access: [tenday.pagasa.dost.gov.ph](https://tenday.pagasa.dost.gov.ph)
-2. Receive approved `token` via email
-3. Configure `.env`:
-
-```env
-EXPO_PUBLIC_PAGASA_PROVIDER=tenday
-EXPO_PUBLIC_PAGASA_API_KEY=your_approved_token
-EXPO_PUBLIC_PAGASA_PROVINCE=Metro Manila
-EXPO_PUBLIC_PAGASA_MUNICITY=Quezon City
+```
+https://api.open-meteo.com/v1/forecast?latitude=17.6132&longitude=121.727&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&timezone=Asia/Manila
 ```
 
-4. Restart Expo: `npm start`
+Heat index is computed from temperature + humidity (Rothfusz regression — `heat-index-calculator.ts`), with Open-Meteo `apparent_temperature` as a fallback.
 
-### How heat index is obtained (TenDay)
-
-TenDay returns `tmean`, `tmax`, `humidity` — **not** direct heat index.
-
-IniTify computes heat index using the Rothfusz regression (NWS/NOAA standard) and labels the result:
-
-> "Heat index computed from DOST-PAGASA TenDay forecast..."
-
-This is **for guidance only**, consistent with PAGASA product disclaimers.
-
-### Custom endpoint setup
-
-If you have a direct PAGASA heat-index feed (e.g. institutional proxy):
+Manual fallback (dev only):
 
 ```env
-EXPO_PUBLIC_PAGASA_PROVIDER=custom
-EXPO_PUBLIC_PAGASA_API_URL=https://your-endpoint/heat-index
-EXPO_PUBLIC_PAGASA_HEAT_INDEX_FIELD=heatIndex
-EXPO_PUBLIC_PAGASA_API_KEY=optional_token
+EXPO_PUBLIC_DEV_MANUAL_HEAT=true
 ```
 
 ---
@@ -101,7 +73,7 @@ Set `enabled: true` **only** after copying verified rules from your IniTify rese
 
 ## What you must provide
 
-1. **TenDay API token** — from PAGASA approval process
+1. **Open-Meteo** — free current weather for Tuguegarao (no key)
 2. **Decision tree rules** — from your research document (paste into `decision-tree.rules.ts`)
 
 Without these, heat data fetch and risk classification will show configuration warnings on the dashboard.

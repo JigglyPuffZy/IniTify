@@ -1,0 +1,202 @@
+{\rtf1\ansi\deff0
+{\fonttbl{\f0\froman\fcharset0 Times New Roman;}{\f1\fswiss\fcharset0 Arial;}}
+{\colortbl;\red0\green0\blue0;}
+\paperw12240\paperh15840\margl1440\margr1440\margt1440\margb1440
+\f0\fs24
+
+{\b\fs32 IniTify (HeatHits) System Features\b0\fs24\par}
+{\i For research paper / thesis use\i0\par}
+\par
+{\b App name:} IniTify\par
+{\b Research paper name:} HeatHits\par
+{\b Study area:} Tuguegarao City, Cagayan\par
+{\b Nature of system:} Decision-support and early-warning system (not a medical diagnostic or treatment device)\par
+\par
+
+{\b\fs28 1. System Overview\b0\fs24\par}
+\par
+IniTify (also referred to in research as HeatHits) is a hybrid artificial intelligence mobile application for heat-risk monitoring, personalized alerts, and emergency assistance during extreme heat conditions. The system combines environmental heat-index data with individual risk factors and classifies heat-related risk into four levels: Low, Moderate, High, and Extreme using a Decision Tree model.\par
+\par
+
+{\b\fs28 2. Core Features\b0\fs24\par}
+\par
+
+{\b 2.1 Heat-Risk Monitoring\b0\par}
+\bullet  Receives and processes heat-index / environmental information for the study area\par
+\bullet  Combines heat data with documented individual risk factors: age, health condition, activity level, hydration status, and GPS/location\par
+\bullet  Continuously supports monitoring of heat-related health risk based on current conditions\par
+\par
+
+{\b 2.2 Personalized Heat-Risk Assessment (Decision Tree)\b0\par}
+\bullet  Uses a Decision Tree classifier to assess heat risk\par
+\bullet  Outputs one of four risk levels: Low, Moderate, High, Extreme\par
+\bullet  Integrates environmental heat index with user profile factors\par
+\bullet  Displays assessment results and related guidance in the application\par
+\par
+
+{\b 2.3 Personalized Recommendations\b0\par}
+\bullet  Provides precautionary guidance based on heat risk, such as:\par
+\tab - Hydration reminders\par
+\tab - Rest and recovery\par
+\tab - Seeking shade\par
+\tab - Limiting outdoor activities\par
+\par
+
+{\b 2.4 Heat-Risk Alerts and Notifications\b0\par}
+\bullet  Notifies the user when heat risk requires attention\par
+\bullet  Communicates current heat-risk level and recommended precautions\par
+\bullet  Supports local notifications (with user permission)\par
+\bullet  Designed to require explicit user acknowledgment (not merely opening a notification)\par
+\par
+
+{\b 2.5 Safety Prompts and User Acknowledgment\b0\par}
+\bullet  Allows the user to respond to safety prompts (e.g., \ldblquote I\rquote m OK\rdblquote  / \ldblquote Need help\rdblquote )\par
+\bullet  Records user responses for monitoring and escalation logic\par
+\bullet  Supports the research concept that repeated failure to respond may indicate a heat-related emergency\par
+\par
+
+{\b 2.6 Multi-Condition Emergency Escalation\b0\par}
+\bullet  Emergency assistance does not activate based on a single missed alert alone\par
+\bullet  Uses a multi-condition approach to reduce false alarms\par
+\bullet  Documented possible indicators include:\par
+\tab 1. Extreme heat-risk level\par
+\tab 2. Repeated failure to respond to safety prompts\par
+\tab 3. Prolonged inactivity at the same location\par
+\bullet  Escalation is designed to activate when multiple indicators are present\par
+\par
+
+{\b 2.7 Emergency Contact Notification\b0\par}
+\bullet  When emergency conditions are satisfied, the system prepares notification content for the designated emergency contact\par
+\bullet  Payload may include:\par
+\tab - User name\par
+\tab - Current heat-risk level\par
+\tab - Last known location\par
+\tab - Nearest hospital / health facility\par
+\tab - Estimated travel time\par
+\par
+
+{\b 2.8 Emergency Assistance Screen\b0\par}
+\bullet  Displays emergency status and related assistance information\par
+\bullet  Shows emergency contact details (when configured)\par
+\bullet  Provides access to nearest hospital and navigation\par
+\bullet  Presents basic first-aid / heat-stroke guidance\par
+\bullet  Supports safety check-in actions during potential emergencies\par
+\par
+
+{\b 2.9 Nearest Hospital and Navigation\b0\par}
+\bullet  Identifies nearby hospitals/facilities using GPS and a local hospital reference list for Tuguegarao\par
+\bullet  Opens maps/navigation directions to the selected facility\par
+\bullet  Can be offered during check-in when the user\rquote s situation indicates elevated danger\par
+\par
+
+{\b 2.10 AI Check-In Assistant (Tify)\b0\par}
+\bullet  Provides a conversational check-in experience with the AI character Tify\par
+\bullet  Collects hydration status, activity level, and how the user feels in the heat\par
+\bullet  Offers situational heat-safety guidance\par
+\bullet  Supports saving check-in records and viewing check-in history\par
+\bullet  May present a nearest-hospital call-to-action when appropriate\par
+\par
+
+{\b 2.11 Live Weather and Heat Index Display\b0\par}
+\bullet  Displays current weather conditions for Tuguegarao City\par
+\bullet  Shows temperature, humidity, heat index, and related weather details\par
+\bullet  Supports automatic weather refresh (e.g., every 15 minutes) with countdown feedback\par
+\bullet  Aligns heat-index values used in guidance with live environmental data\par
+\par
+
+{\b 2.12 User Profile and Health Vulnerability Setup\b0\par}
+\bullet  Captures user identity and risk-related profile data\par
+\bullet  Records age, health conditions, activity level, and hydration-related status\par
+\bullet  Stores emergency contact information for escalation use\par
+\bullet  Supports health profile updates after initial setup\par
+\par
+
+{\b 2.13 Authentication and Account Management\b0\par}
+\bullet  Supports user sign-up and login\par
+\bullet  Links profile and app data to authenticated users (when cloud auth is configured)\par
+\par
+
+{\b 2.14 Notifications and Reminders\b0\par}
+\bullet  In-app notification center for alerts and updates\par
+\bullet  Check-in reminder settings to encourage regular heat-safety check-ins\par
+\par
+
+{\b 2.15 Safety Tips and Health Knowledge Support\b0\par}
+\bullet  Provides preventive heat-safety tips and guidance\par
+\bullet  Complements emergency first-aid content with educational safety information\par
+\par
+
+{\b 2.16 Offline Support\b0\par}
+\bullet  Caches important heat and assessment-related information for limited-connectivity situations\par
+\bullet  Allows continued access to key stored data when offline\par
+\par
+
+{\b 2.17 Location Services\b0\par}
+\bullet  Uses GPS for hospital lookup, emergency assistance, and location logging\par
+\bullet  Weather/heat monitoring for the study uses fixed Tuguegarao study-area coordinates\par
+\par
+
+{\b\fs28 3. Main Application Modules\b0\fs24\par}
+\par
+{\b Home} \endash  Overview of current heat/risk status and quick access to key features\par
+{\b Weather} \endash  Live weather and heat-index information for Tuguegarao\par
+{\b Check-in (Tify)} \endash  AI-assisted conversational heat check-in\par
+{\b Notifications} \endash  Alerts, reminders, and in-app messages\par
+{\b Emergency} \endash  Safety prompts, emergency status, first-aid, hospital/contact actions\par
+{\b Profile} \endash  Account, health profile, and settings\par
+{\b Assessment / Recommendations} \endash  Decision Tree risk result and precautionary advice\par
+{\b Hospital} \endash  Nearest facility and navigation support\par
+{\b Offline} \endash  Cached heat and assessment information\par
+\par
+
+{\b\fs28 4. Technical Capabilities\b0\fs24\par}
+\par
+\bullet  Cross-platform mobile application (Expo / React Native)\par
+\bullet  Live environmental data integration for Tuguegarao (Open-Meteo)\par
+\bullet  Heat index computation from temperature and humidity\par
+\bullet  Decision Tree risk classification engine\par
+\bullet  Local device storage with optional cloud database synchronization (Supabase / MySQL)\par
+\bullet  Local notifications and reminder scheduling\par
+\bullet  GPS-based hospital and emergency location support\par
+\bullet  Offline caching for critical information\par
+\par
+
+{\b\fs28 5. Data Management Features\b0\fs24\par}
+\par
+The system can store and/or sync records related to:\par
+\bullet  Users and risk profiles\par
+\bullet  Emergency contacts\par
+\bullet  Heat-index readings and weather refresh logs\par
+\bullet  Risk assessments\par
+\bullet  Recommendation logs\par
+\bullet  Heat-alert logs\par
+\bullet  Safety-prompt responses\par
+\bullet  Emergency events and contact notifications\par
+\bullet  Hospital lookups and location logs\par
+\bullet  Check-in records\par
+\bullet  Offline cache snapshots\par
+\par
+
+{\b\fs28 6. Safety and Ethical Positioning\b0\fs24\par}
+\par
+\bullet  IniTify is a decision-support and early-warning system.\par
+\bullet  It is not a medical diagnostic device and does not replace professional medical care.\par
+\bullet  Multi-condition emergency escalation is used to reduce false alarms.\par
+\bullet  Users in danger should seek appropriate emergency services and medical facilities.\par
+\par
+
+{\b\fs28 7. Sample Paragraph for Papers\b0\fs24\par}
+\par
+IniTify (HeatHits) is a mobile heat-risk monitoring and emergency-assistance system designed for Tuguegarao City, Cagayan. It integrates real-time environmental heat-index data with individual factors\emdash age, health condition, activity level, and hydration\emdash to classify heat-related risk into Low, Moderate, High, or Extreme using a Decision Tree. The application provides personalized recommendations, safety prompts, and notifications, and supports multi-condition emergency escalation to reduce false alarms. Additional features include AI-assisted check-ins, nearest-hospital guidance, offline caching, and emergency first-aid information. The system functions as a decision-support and early-warning tool and is not intended as a medical diagnostic device.\par
+\par
+
+{\b\fs28 8. Suggested Limitations (Optional Section)\b0\fs24\par}
+\par
+\bullet  Some emergency threshold values (response timeout, number of failed prompts, inactivity duration) may remain configurable pending final research approval.\par
+\bullet  Production SMS or call delivery to emergency contacts depends on external service configuration.\par
+\bullet  Weather used for heat-risk monitoring is based on the Tuguegarao study area; GPS is primarily used for hospital and emergency features.\par
+\bullet  AI check-in guidance is advisory and does not constitute a medical diagnosis.\par
+\par
+\par
+{\i End of document\i0\par}
+}

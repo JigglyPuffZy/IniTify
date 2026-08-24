@@ -12,4 +12,5 @@ export interface ServiceResult<T> {
   status: ServiceStatus;
   data: T | null;
   message: string;
+  feed?: unknown;
 }

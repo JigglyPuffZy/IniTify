@@ -1,113 +1,87 @@
-import * as Notifications from 'expo-notifications';
 import type { HeatRiskLevel } from '@/src/models/risk';
 import type { ServiceResult } from '@/src/models/service-result';
-import { RISK_LEVEL_LABELS } from '@/src/constants/risk-levels';
+import { canUseNativeNotifications } from '@/src/services/notifications/notifications.constants';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+/**
+ * Phone / OS notification facade.
+ *
+ * In Expo Go (SDK 53+), remote/local push via expo-notifications is unsupported and
+ * must never be imported — it crashes Metro with "unknown module" / Expo Go errors.
+ * IniTify uses the in-app Notifications tab instead.
+ *
+ * Development/production builds can still enable native push later by wiring a
+ * separate native module; this service stays a safe no-op until then.
+ */
+
+export type NotificationPermissionStatus = 'granted' | 'denied' | 'undetermined' | 'unavailable';
+
+function unavailableMessage(): string {
+  return canUseNativeNotifications()
+    ? 'Phone notifications are not wired in this build. Use the in-app Notifications tab.'
+    : 'Phone push is unavailable in Expo Go. Use the in-app Notifications tab.';
+}
+
+function unavailableBool(): ServiceResult<boolean> {
+  return { status: 'unavailable', data: false, message: unavailableMessage() };
+}
+
+function unavailableId(): ServiceResult<string> {
+  return { status: 'unavailable', data: null, message: unavailableMessage() };
+}
 
 export const notificationService = {
+  async initialize(): Promise<void> {
+    /* no-op — Expo Go safe */
+  },
+
+  async getPermissionStatus(): Promise<NotificationPermissionStatus> {
+    return 'unavailable';
+  },
+
   async requestPermission(): Promise<ServiceResult<boolean>> {
-    try {
-      const { status: existing } = await Notifications.getPermissionsAsync();
-      let finalStatus = existing;
-      if (existing !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-      if (finalStatus !== 'granted') {
-        return {
-          status: 'permission_denied',
-          data: false,
-          message: 'Notification permission denied.',
-        };
-      }
-      return { status: 'success', data: true, message: 'Notifications enabled.' };
-    } catch {
-      return {
-        status: 'error',
-        data: false,
-        message: 'Unable to request notification permission.',
-      };
-    }
+    return unavailableBool();
   },
 
   async sendHeatRiskAlert(
-    level: HeatRiskLevel,
-    precautionSummary: string,
+    _level: HeatRiskLevel,
+    _precautionSummary: string,
   ): Promise<ServiceResult<string>> {
-    const permission = await this.requestPermission();
-    if (permission.status !== 'success') {
-      return {
-        status: permission.status,
-        data: null,
-        message: permission.message,
-      };
-    }
-
-    try {
-      const id = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: `Heat Risk: ${RISK_LEVEL_LABELS[level]}`,
-          body: precautionSummary,
-          data: { level, type: 'heat-risk-alert' },
-        },
-        trigger: null,
-      });
-      return {
-        status: 'success',
-        data: id,
-        message: 'Heat-risk alert notification sent.',
-      };
-    } catch {
-      return {
-        status: 'error',
-        data: null,
-        message: 'Failed to send notification.',
-      };
-    }
+    return unavailableId();
   },
 
-  /** Local notification on this device when emergency mode becomes ACTIVE */
-  async sendEmergencyActiveAlert(reasons: string): Promise<ServiceResult<string>> {
-    const permission = await this.requestPermission();
-    if (permission.status !== 'success') {
-      return {
-        status: permission.status,
-        data: null,
-        message: permission.message,
-      };
-    }
+  async sendEmergencyActiveAlert(_reasons: string): Promise<ServiceResult<string>> {
+    return unavailableId();
+  },
 
-    try {
-      const id = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'IniTify — Emergency ACTIVE',
-          body: `Heat emergency detected: ${reasons}. Open the app and seek help.`,
-          data: { type: 'emergency-active' },
-          sound: 'default',
-          priority: Notifications.AndroidNotificationPriority.MAX,
-        },
-        trigger: null,
-      });
-      return {
-        status: 'success',
-        data: id,
-        message: 'Emergency active notification sent.',
-      };
-    } catch {
-      return {
-        status: 'error',
-        data: null,
-        message: 'Failed to send emergency notification.',
-      };
-    }
+  async cancelScheduledNotification(_notificationId: string | null): Promise<void> {
+    /* no-op */
+  },
+
+  async scheduleHealthCheckInReminder(_triggerDate: Date): Promise<ServiceResult<string>> {
+    return unavailableId();
+  },
+
+  async sendHealthCheckInReminderNow(): Promise<ServiceResult<string>> {
+    return unavailableId();
+  },
+
+  async sendTestNotification(_delaySeconds = 5): Promise<ServiceResult<string>> {
+    return unavailableId();
+  },
+
+  async sendWeatherSafetyReminder(_body: string): Promise<ServiceResult<string>> {
+    return unavailableId();
+  },
+
+  async addNotificationReceivedListener(
+    _onReceived: (data: Record<string, unknown>) => void,
+  ): Promise<(() => void) | null> {
+    return null;
+  },
+
+  async addNotificationResponseListener(
+    _onResponse: (data: Record<string, unknown>) => void,
+  ): Promise<(() => void) | null> {
+    return null;
   },
 };

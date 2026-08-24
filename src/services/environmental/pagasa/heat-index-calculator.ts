@@ -1,10 +1,8 @@
 /**
  * Computes heat index (°C) from air temperature (°C) and relative humidity (%).
  * Uses the Rothfusz regression (NWS/NOAA) with Celsius conversion.
- *
- * NOTE: DOST-PAGASA TenDay API provides tmean/tmax and humidity — not direct heat index.
- * When this function is used, the result is labeled as computed from TenDay forecast data,
- * not the iHeatMap synoptic heat-index product.
+ * Used when a weather provider does not return a dedicated heat-index field
+ * (e.g. Open-Meteo: compute from temperature_2m + relative_humidity_2m).
  */
 export function computeHeatIndexFromTempHumidity(
   tempCelsius: number,
@@ -50,6 +48,4 @@ export function computeHeatIndexFromTempHumidity(
   return Math.round(hiC * 10) / 10;
 }
 
-export type HeatIndexComputationMethod =
-  | 'direct'
-  | 'computed-from-tenday';
+export type HeatIndexComputationMethod = 'direct' | 'computed-from-weather';

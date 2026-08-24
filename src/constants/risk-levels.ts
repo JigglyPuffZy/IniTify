@@ -7,11 +7,12 @@ export const RISK_LEVEL_LABELS: Record<HeatRiskLevel, string> = {
   EXTREME: 'Extreme',
 };
 
+/** Blue monochromatic scale — intensity conveys severity */
 export const RISK_LEVEL_COLORS: Record<HeatRiskLevel, string> = {
-  LOW: '#22c55e',
-  MODERATE: '#eab308',
-  HIGH: '#f97316',
-  EXTREME: '#ef4444',
+  LOW: '#93C5FD',
+  MODERATE: '#60A5FA',
+  HIGH: '#3B82F6',
+  EXTREME: '#1D4ED8',
 };
 
 export const DISCLAIMER =
