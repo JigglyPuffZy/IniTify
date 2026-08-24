@@ -18,10 +18,12 @@ export interface HospitalInfo {
   isNearest?: boolean;
 }
 
+type RankedHospital = HospitalInfo & { sortKm: number };
+
 function toHospitalInfo(
   hospital: (typeof TUGUEGARAO_HOSPITALS)[number],
   userLocation: UserLocation,
-): HospitalInfo {
+): RankedHospital {
   const km = distanceKm(
     userLocation.latitude,
     userLocation.longitude,
@@ -37,15 +39,17 @@ function toHospitalInfo(
     longitude: hospital.longitude,
     phone: hospital.phone,
     category: hospital.category,
+    // Keep precise value for sorting; round only for display.
+    sortKm: km,
     distanceKm: Math.round(km * 10) / 10,
     estimatedTravelTime: `~${minutes} min (estimate)`,
   };
 }
 
 function rankAllStatic(location: UserLocation): HospitalInfo[] {
-  return TUGUEGARAO_HOSPITALS.map((h) => toHospitalInfo(h, location)).sort(
-    (a, b) => a.distanceKm - b.distanceKm,
-  );
+  return TUGUEGARAO_HOSPITALS.map((h) => toHospitalInfo(h, location))
+    .sort((a, b) => a.sortKm - b.sortKm)
+    .map(({ sortKm: _sortKm, ...hospital }) => hospital);
 }
 
 function findNearestStatic(location: UserLocation): HospitalInfo {

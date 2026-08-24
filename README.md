@@ -1,30 +1,29 @@
 # IniTify
 
-HeatHits / IniTify — mobile AI-assisted heat-risk monitoring app (Expo + TypeScript).
-
-## Stack
-
-- Expo SDK 52 · React Native · Expo Router
-- Decision tree risk assessment (PAGASA heat index + user risk factors)
-- Python ML training in `ml/`
+Heat-risk monitoring app for Tuguegarao City (Expo + TypeScript + Supabase).
 
 ## Quick start
 
 ```bash
 npm install
-cp .env.example .env
 npx expo start
 ```
 
-## Key paths
+Use your real `.env` (Supabase URL/key, optional AI key).
+
+## APK release
+
+```bash
+eas login
+npm run eas:env:push
+npm run build:apk
+```
+
+## Important paths
 
 | Path | Description |
 |------|-------------|
-| `src/config/decision-tree.rules.ts` | App decision tree rules |
-| `ml/data/heat_risk_dataset.csv` | Training dataset |
-| `ml/output/tree.png` | Tree diagram |
-| `ml/output/TRAINING_RESULTS.md` | Model metrics |
-
-## Docs
-
-See `docs/` for research summary, PAGASA setup, and missing items.
+| `src/config/decision-tree.rules.ts` | Heat-risk decision tree |
+| `docs/database/SUPABASE_SETUP.md` | SQL setup order |
+| `docs/INITIFY_FEATURES_FOR_PAPER.rtf` | Features list for papers |
+| `ml/` | Optional ML training |

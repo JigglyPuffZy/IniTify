@@ -1,0 +1,38 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "preview": {
+      "environment": "preview",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_DATABASE_PROVIDER": "supabase",
+        "EXPO_PUBLIC_HOSPITAL_DATA_PROVIDER": "static-tuguegarao",
+        "EXPO_PUBLIC_MAPS_PROVIDER": "google",
+        "EXPO_PUBLIC_DEV_MANUAL_HEAT": "false",
+        "EXPO_PUBLIC_EMERGENCY_DEV_MODE": "false"
+      }
+    },
+    "production": {
+      "environment": "production",
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_DATABASE_PROVIDER": "supabase",
+        "EXPO_PUBLIC_HOSPITAL_DATA_PROVIDER": "static-tuguegarao",
+        "EXPO_PUBLIC_MAPS_PROVIDER": "google",
+        "EXPO_PUBLIC_DEV_MANUAL_HEAT": "false",
+        "EXPO_PUBLIC_EMERGENCY_DEV_MODE": "false"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

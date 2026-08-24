@@ -39,8 +39,10 @@ export const locationService = {
         };
       }
 
+      // Prefer a fresh high-accuracy fix so nearest-hospital ranking is trustworthy.
       const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
+        accuracy: Location.Accuracy.High,
+        mayShowUserSettingsDialog: true,
       });
 
       lastKnownLocation = {
@@ -56,9 +58,17 @@ export const locationService = {
         message: 'Location retrieved successfully.',
       };
     } catch {
+      // Fall back to last known only if it is still relatively fresh (< 5 min).
+      const maxAgeMs = 5 * 60 * 1000;
+      const freshLastKnown =
+        lastKnownLocation &&
+        Date.now() - new Date(lastKnownLocation.retrievedAt).getTime() < maxAgeMs
+          ? lastKnownLocation
+          : null;
+
       return {
         status: 'unavailable',
-        location: lastKnownLocation,
+        location: freshLastKnown,
         message: 'Location is currently unavailable.',
       };
     }

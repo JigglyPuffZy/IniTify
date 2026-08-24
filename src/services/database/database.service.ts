@@ -11,12 +11,12 @@ function getActiveSyncService() {
 }
 
 /**
- * Database service — Firebase, MySQL API, or Supabase per HeatHits documentation.
+ * Database service — MySQL API or Supabase.
  */
 export const databaseService = {
   getProvider(): DatabaseProvider | null {
     const provider = appConfig.databaseProvider;
-    if (provider === 'firebase' || provider === 'mysql' || provider === 'supabase') {
+    if (provider === 'mysql' || provider === 'supabase') {
       return provider;
     }
     return null;

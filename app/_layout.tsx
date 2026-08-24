@@ -18,6 +18,7 @@ import { IniTifyProvider } from '@/src/context/IniTifyContext';
 import { AuthProvider, useAuth } from '@/src/context/AuthContext';
 import { ThemeProvider } from '@/src/context/ThemeContext';
 import { EmergencyActiveMonitor } from '@/src/components/EmergencyActiveMonitor';
+import { NotificationReminderHandler } from '@/src/components/NotificationReminderHandler';
 import { useAppTheme } from '@/src/theme/useAppTheme';
 
 export { ErrorBoundary } from 'expo-router';
@@ -64,6 +65,7 @@ function AppRoot() {
   return (
     <View style={{ flex: 1, backgroundColor: palette.background }}>
       {user ? <EmergencyActiveMonitor /> : null}
+      {user ? <NotificationReminderHandler /> : null}
       <ThemedStack />
     </View>
   );

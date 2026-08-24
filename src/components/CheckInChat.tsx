@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -15,13 +15,13 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import type { UserProfile } from '@/src/models/user';
 import type { HeatRiskLevel } from '@/src/models/risk';
 import type { UserLocation } from '@/src/models/location';
 import type { CheckInChatDraft, CheckInChatMessage, CheckInChatStep } from '@/src/models/check-in-chat';
 import { checkInChatService } from '@/src/services/check-in/check-in-chat.service';
 import { hospitalService, type HospitalInfo } from '@/src/services/hospital/hospital.service';
-import { RISK_LEVEL_LABELS } from '@/src/constants/risk-levels';
 import { BrandMark } from '@/src/components/auth/BrandMark';
 import { useAppTheme } from '@/src/theme/useAppTheme';
 import { cardShadow, fonts, layout, radius, spacing, typography } from '@/src/theme';
@@ -33,7 +33,7 @@ const ASSISTANT_NAME = 'Tify';
 const CHECK_IN_STEPS: { key: CheckInChatStep; label: string }[] = [
   { key: 'hydration', label: 'Hydration' },
   { key: 'activity', label: 'Activity' },
-  { key: 'feeling', label: 'How you feel' },
+  { key: 'feeling', label: 'Feeling' },
 ];
 
 function stepIndex(step: CheckInChatStep): number {
@@ -82,54 +82,53 @@ function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
-function TifyAvatar({ size = 36, ring = false }: { size?: number; ring?: boolean }) {
+function TifyAvatar({ size = 34, online = false }: { size?: number; online?: boolean }) {
   const { palette } = useAppTheme();
   return (
-    <View style={[tifyAvatarStyles.ring, ring && tifyAvatarStyles.ringActive]}>
+    <View style={tifyAvatarStyles.wrap}>
       <View
         style={[
           tifyAvatarStyles.shell,
-          { borderRadius: radius.md, backgroundColor: palette.surface, borderColor: palette.border },
+          {
+            width: size + 8,
+            height: size + 8,
+            borderRadius: (size + 8) / 2,
+            backgroundColor: palette.surface,
+            borderColor: palette.primarySoft,
+          },
         ]}
       >
         <BrandMark size={size} />
       </View>
+      {online ? <View style={[tifyAvatarStyles.onlineDot, { borderColor: palette.surface }]} /> : null}
     </View>
   );
 }
 
 const tifyAvatarStyles = StyleSheet.create({
-  ring: {
-    borderRadius: radius.lg,
-    padding: 2,
-  },
-  ringActive: {
-    backgroundColor: 'rgba(37,99,235,0.18)',
-  },
+  wrap: { position: 'relative' },
   shell: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 4,
-    borderWidth: 1,
+    borderWidth: 2,
+    overflow: 'hidden',
+  },
+  onlineDot: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: '#22C55E',
+    borderWidth: 2,
   },
 });
 
-function buildContextLine(heatIndexC: number | null, riskLevel: HeatRiskLevel | null): string | null {
-  const parts: string[] = [];
-  if (heatIndexC != null) {
-    parts.push(`${(Math.round(heatIndexC * 10) / 10).toFixed(1)}°C heat index`);
-  }
-  if (riskLevel) parts.push(`${RISK_LEVEL_LABELS[riskLevel]} risk`);
-  return parts.length ? parts.join(' · ') : null;
-}
-
 interface CheckInHeaderProps {
   styles: ReturnType<typeof createStyles>;
-  shadow: ReturnType<typeof cardShadow>;
-  firstName: string;
+  primaryColor: string;
   usesAi: boolean;
-  heatIndexC: number | null;
-  riskLevel: HeatRiskLevel | null;
   activeStep: number;
   draftStep: CheckInChatStep;
   onClose?: () => void;
@@ -138,76 +137,70 @@ interface CheckInHeaderProps {
 
 function CheckInHeader({
   styles,
-  shadow,
-  firstName,
+  primaryColor,
   usesAi,
-  heatIndexC,
-  riskLevel,
   activeStep,
   draftStep,
   onClose,
   compact = false,
 }: CheckInHeaderProps) {
-  const contextLine = buildContextLine(heatIndexC, riskLevel);
+  const showSteps = !compact && !usesAi && draftStep !== 'done';
 
   return (
-    <View style={[styles.header, shadow, compact && styles.headerCompact]}>
-      <View style={[styles.headerBar, compact && styles.headerBarCompact]}>
+    <View style={[styles.header, compact && styles.headerCompact]}>
+      <View style={[styles.headerBar, !showSteps && styles.headerBarCompact]}>
         {onClose ? (
           <Pressable
             onPress={onClose}
             style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}
             accessibilityRole="button"
             accessibilityLabel="Go back"
+            hitSlop={8}
           >
-            <Text style={styles.backBtnText}>Back</Text>
+            <Ionicons name="chevron-back" size={20} color={primaryColor} />
           </Pressable>
-        ) : (
-          <View style={styles.backBtnSpacer} />
-        )}
+        ) : null}
 
         <View style={styles.headerBrand}>
-          <TifyAvatar size={compact ? 28 : 32} ring />
+          <TifyAvatar size={compact ? 28 : 32} online />
           <View style={styles.headerBrandText}>
             <Text style={styles.headerTitle}>{ASSISTANT_NAME}</Text>
-            {!compact ? (
-              <Text style={styles.headerTagline}>
-                {usesAi ? 'Personal heat guidance' : 'Guided check-in'}
-              </Text>
-            ) : null}
+            <Text style={styles.headerTagline}>Online</Text>
           </View>
         </View>
-
-        <View style={styles.backBtnSpacer} />
       </View>
 
-      {!compact ? (
-        <>
-          <Text style={styles.greetingText}>
-            Hi {firstName}, how are you feeling in the heat today?
-          </Text>
-          {contextLine ? <Text style={styles.contextMeta}>{contextLine}</Text> : null}
-          <Text style={styles.disclaimerText}>Guidance only — not a medical diagnosis.</Text>
-
-          {!usesAi && draftStep !== 'done' ? (
-            <View style={styles.progressSection}>
-              <View style={styles.progressBar}>
-                <LinearGradient
-                  colors={['#1D4ED8', '#3B82F6']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={[
-                    styles.progressFill,
-                    { width: `${((activeStep + 1) / CHECK_IN_STEPS.length) * 100}%` },
-                  ]}
-                />
-              </View>
-              <Text style={styles.progressCaption}>
-                Step {activeStep + 1} of {CHECK_IN_STEPS.length} · {CHECK_IN_STEPS[activeStep]?.label}
-              </Text>
-            </View>
-          ) : null}
-        </>
+      {showSteps ? (
+        <View style={styles.progressSection}>
+          <View style={styles.stepDots}>
+            {CHECK_IN_STEPS.map((step, index) => {
+              const done = index < activeStep;
+              const current = index === activeStep;
+              return (
+                <View key={step.key} style={styles.stepItem}>
+                  <View
+                    style={[
+                      styles.stepDot,
+                      done && styles.stepDotDone,
+                      current && styles.stepDotCurrent,
+                    ]}
+                  >
+                    {done ? (
+                      <Ionicons name="checkmark" size={12} color="#FFF" />
+                    ) : (
+                      <Text style={[styles.stepDotNum, current && styles.stepDotNumActive]}>
+                        {index + 1}
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={[styles.stepLabel, current && styles.stepLabelActive]}>
+                    {step.label}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
       ) : null}
     </View>
   );
@@ -233,7 +226,6 @@ export function CheckInChat({
   );
   const listRef = useRef<FlatList<CheckInChatMessage>>(null);
   const inputRef = useRef<TextInput>(null);
-  const shadow = useMemo(() => cardShadow(), []);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
@@ -252,7 +244,6 @@ export function CheckInChat({
   const [openingMaps, setOpeningMaps] = useState(false);
   const [requestingLocation, setRequestingLocation] = useState(false);
 
-  const firstName = useMemo(() => profile.name.split(' ')[0] || profile.name, [profile.name]);
   const activeStep = stepIndex(draft.step);
   const canSend = Boolean(input.trim()) && !typing && !saving;
   const greetingHeatSynced = useRef(false);
@@ -438,9 +429,10 @@ export function CheckInChat({
       <View style={[styles.messageBlock, isUser && styles.messageBlockUser]}>
         <View style={[styles.row, isUser && styles.rowUser]}>
           {!isUser ? (
-            showAvatar ? <TifyAvatar size={32} /> : <View style={styles.avatarSpacer} />
+            showAvatar ? <TifyAvatar size={30} online /> : <View style={styles.avatarSpacer} />
           ) : null}
           <View style={[styles.bubbleWrap, isUser && styles.bubbleWrapUser]}>
+            {!isUser && showAvatar ? <Text style={styles.senderLabel}>{ASSISTANT_NAME}</Text> : null}
             {isUser ? (
               <LinearGradient
                 colors={['#1D4ED8', '#2563EB', '#3B82F6']}
@@ -451,7 +443,7 @@ export function CheckInChat({
                 <Text style={styles.bubbleTextUser}>{item.content}</Text>
               </LinearGradient>
             ) : (
-              <View style={[styles.bubble, styles.bubbleAssistant, shadow]}>
+              <View style={[styles.bubble, styles.bubbleAssistant]}>
                 <Text style={styles.bubbleText}>{item.content}</Text>
               </View>
             )}
@@ -480,11 +472,8 @@ export function CheckInChat({
       >
         <CheckInHeader
           styles={styles}
-          shadow={shadow}
-          firstName={firstName}
+          primaryColor={palette.primary}
           usesAi={usesAi}
-          heatIndexC={heatIndexC}
-          riskLevel={riskLevel}
           activeStep={activeStep}
           draftStep={draft.step}
           onClose={onClose}
@@ -505,14 +494,14 @@ export function CheckInChat({
             typing ? (
               <View style={styles.messageBlock}>
                 <View style={styles.row}>
-                  <TifyAvatar size={32} />
-                  <View style={[styles.bubble, styles.bubbleAssistant, styles.typingBubble, shadow]}>
+                  <TifyAvatar size={30} online />
+                  <View style={[styles.bubble, styles.bubbleAssistant, styles.typingBubble]}>
                     <View style={styles.typingDots}>
                       <View style={styles.dot} />
                       <View style={[styles.dot, styles.dotMid]} />
                       <View style={[styles.dot, styles.dotLate]} />
                     </View>
-                    <Text style={styles.typingText}>Tify is typing…</Text>
+                    <Text style={styles.typingText}>Tify is typing...</Text>
                   </View>
                 </View>
               </View>
@@ -523,16 +512,16 @@ export function CheckInChat({
         <View
           style={[
             styles.footer,
-            shadow,
             {
               paddingBottom: keyboardVisible
-                ? spacing.xs
+                ? spacing.sm
                 : Math.max(insets.bottom, spacing.md),
             },
           ]}
         >
           {quickReplies?.length && !keyboardVisible ? (
             <View style={styles.quickRepliesWrap}>
+              <Text style={styles.quickRepliesHint}>Quick replies</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -557,7 +546,7 @@ export function CheckInChat({
 
           {showHospitalCta && !keyboardVisible ? (
             <View style={styles.hospitalCtaWrap}>
-              <Text style={styles.hospitalCtaHint}>Nearest hospital</Text>
+              <Text style={styles.hospitalCtaHint}>Need care nearby?</Text>
               {!location ? (
                 <Pressable
                   style={({ pressed }) => [
@@ -573,7 +562,10 @@ export function CheckInChat({
                   {requestingLocation ? (
                     <ActivityIndicator color={palette.primary} />
                   ) : (
-                    <Text style={styles.hospitalCtaTitle}>Enable location</Text>
+                    <>
+                      <Ionicons name="location-outline" size={18} color={palette.primary} />
+                      <Text style={styles.hospitalCtaTitle}>Enable location</Text>
+                    </>
                   )}
                 </Pressable>
               ) : hospitalLoading ? (
@@ -597,23 +589,27 @@ export function CheckInChat({
                     {openingMaps ? (
                       <ActivityIndicator color="#FFF" />
                     ) : (
-                      <>
-                        <Text style={styles.hospitalCtaTitleLight}>
-                          {nearestHospital.name}
-                        </Text>
-                        <Text style={styles.hospitalCtaSubLight}>
-                          {nearestHospital.distanceKm} km
-                          {nearestHospital.estimatedTravelTime
-                            ? ` · ${nearestHospital.estimatedTravelTime}`
-                            : ''}
-                        </Text>
-                      </>
+                      <View style={styles.hospitalCtaRow}>
+                        <Ionicons name="navigate" size={20} color="#FFF" />
+                        <View style={styles.hospitalCtaTextCol}>
+                          <Text style={styles.hospitalCtaTitleLight}>{nearestHospital.name}</Text>
+                          <Text style={styles.hospitalCtaSubLight}>
+                            {nearestHospital.distanceKm} km
+                            {nearestHospital.estimatedTravelTime
+                              ? ` · ${nearestHospital.estimatedTravelTime}`
+                              : ''}
+                            {' · Tap for directions'}
+                          </Text>
+                        </View>
+                      </View>
                     )}
                   </LinearGradient>
                 </Pressable>
               ) : (
                 <View style={[styles.hospitalCta, styles.hospitalCtaMuted]}>
-                  <Text style={styles.hospitalCtaTitle}>Unavailable</Text>
+                  <Text style={styles.hospitalCtaTitle}>
+                    {hospitalStatus ?? 'Hospital unavailable'}
+                  </Text>
                 </View>
               )}
             </View>
@@ -621,7 +617,7 @@ export function CheckInChat({
 
           {readyToSave && !keyboardVisible ? (
             <Pressable
-              style={({ pressed }) => [styles.saveWrap, shadow, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.saveWrap, pressed && styles.pressed]}
               onPress={() => void saveCheckIn(draft, messages)}
               disabled={saving}
             >
@@ -634,24 +630,27 @@ export function CheckInChat({
                 {saving ? (
                   <ActivityIndicator color="#FFF" />
                 ) : (
-                  <Text style={styles.saveBarText}>Save check-in</Text>
+                  <>
+                    <Ionicons name="checkmark-circle" size={20} color="#FFF" />
+                    <Text style={styles.saveBarText}>Save check-in</Text>
+                  </>
                 )}
               </LinearGradient>
             </Pressable>
           ) : null}
 
-          <View style={[styles.composer, shadow]}>
+          <View style={styles.composer}>
             <TextInput
               ref={inputRef}
               style={styles.input}
               value={input}
               onChangeText={setInput}
-              placeholder={`Message ${ASSISTANT_NAME}…`}
+              placeholder="Message Tify..."
               placeholderTextColor={palette.textLight}
               multiline
               maxLength={500}
               editable={!typing && !saving}
-              textAlignVertical="top"
+              textAlignVertical="center"
               underlineColorAndroid="transparent"
               selectionColor={palette.primary}
               onFocus={() => {
@@ -663,7 +662,11 @@ export function CheckInChat({
               }}
             />
             <Pressable
-              style={({ pressed }) => [styles.sendBtnOuter, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.sendBtnOuter,
+                canSend ? styles.sendBtnReady : styles.sendBtnIdle,
+                pressed && canSend && styles.pressed,
+              ]}
               onPress={() => {
                 void handleSend(input);
                 Keyboard.dismiss();
@@ -672,19 +675,14 @@ export function CheckInChat({
               accessibilityRole="button"
               accessibilityLabel="Send message"
             >
-              {canSend ? (
-                <LinearGradient
-                  colors={['#1D4ED8', '#2563EB', '#3B82F6']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.sendBtn}
-                >
-                  <Text style={styles.sendBtnText}>Send</Text>
-                </LinearGradient>
+              {typing ? (
+                <ActivityIndicator color="#FFF" size="small" />
               ) : (
-                <View style={[styles.sendBtn, styles.sendBtnDisabled]}>
-                  <Text style={[styles.sendBtnText, styles.sendBtnTextDisabled]}>Send</Text>
-                </View>
+                <Ionicons
+                  name="send"
+                  size={18}
+                  color={canSend ? '#FFF' : palette.textMuted}
+                />
               )}
             </Pressable>
           </View>
@@ -702,57 +700,52 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number) {
     },
     ambientGlow: {
       position: 'absolute',
-      top: 80,
-      right: -40,
-      width: 180,
-      height: 180,
-      borderRadius: 90,
-      backgroundColor: isDark ? 'rgba(37,99,235,0.08)' : 'rgba(147,197,253,0.35)',
+      top: 60,
+      right: -50,
+      width: 200,
+      height: 200,
+      borderRadius: 100,
+      backgroundColor: isDark ? 'rgba(37,99,235,0.1)' : 'rgba(147,197,253,0.4)',
     },
     flex: { flex: 1 },
 
     header: {
       backgroundColor: p.surface,
-      paddingTop: spacing.xs,
+      paddingTop: spacing.sm,
       paddingBottom: spacing.md,
       paddingHorizontal: pagePad,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: p.border,
+      borderBottomLeftRadius: radius.xxl,
+      borderBottomRightRadius: radius.xxl,
+      borderBottomWidth: 0,
     },
     headerCompact: {
       paddingBottom: spacing.sm,
+      borderBottomLeftRadius: 0,
+      borderBottomRightRadius: 0,
     },
     headerBar: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: spacing.md,
+      justifyContent: 'flex-start',
+      gap: spacing.sm,
     },
     headerBarCompact: {
       marginBottom: 0,
     },
     backBtn: {
-      minWidth: 56,
-      paddingVertical: spacing.sm,
-      paddingHorizontal: spacing.sm,
-      borderRadius: radius.pill,
-      backgroundColor: p.primarySoft,
-    },
-    backBtnText: {
-      fontFamily: fonts.bodySemiBold,
-      fontSize: 14,
-      color: p.primary,
-      textAlign: 'center',
-    },
-    backBtnSpacer: {
-      minWidth: 56,
-    },
-    headerBrand: {
-      flex: 1,
-      flexDirection: 'row',
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       alignItems: 'center',
       justifyContent: 'center',
-      gap: spacing.md,
+      backgroundColor: p.primarySoft,
+      flexShrink: 0,
+    },
+    headerBrand: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      flexShrink: 1,
     },
     headerBrandText: {
       alignItems: 'flex-start',
@@ -770,42 +763,54 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number) {
       marginTop: 1,
       fontSize: 12,
     },
-    greetingText: {
-      fontFamily: fonts.bodyMedium,
-      fontSize: 15,
-      lineHeight: 22,
-      color: p.text,
-      marginBottom: spacing.xs,
-    },
-    contextMeta: {
-      ...typography.caption,
-      color: p.textSecondary,
-      marginBottom: spacing.xs,
-    },
-    disclaimerText: {
-      ...typography.caption,
-      color: p.textLight,
-      fontSize: 11,
-      lineHeight: 16,
-    },
     progressSection: {
       marginTop: spacing.md,
-      gap: spacing.xs,
     },
-    progressBar: {
-      height: 6,
-      borderRadius: radius.pill,
-      backgroundColor: p.border,
-      overflow: 'hidden',
+    stepDots: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: spacing.sm,
     },
-    progressFill: {
-      height: '100%',
-      borderRadius: radius.pill,
+    stepItem: {
+      flex: 1,
+      alignItems: 'center',
+      gap: 6,
     },
-    progressCaption: {
-      ...typography.caption,
+    stepDot: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: p.surfaceInset,
+      borderWidth: 1,
+      borderColor: p.border,
+    },
+    stepDotDone: {
+      backgroundColor: p.primary,
+      borderColor: p.primary,
+    },
+    stepDotCurrent: {
+      backgroundColor: p.primary,
+      borderColor: p.primary,
+    },
+    stepDotNum: {
+      fontFamily: fonts.bodySemiBold,
+      fontSize: 12,
       color: p.textMuted,
+    },
+    stepDotNumActive: {
+      color: '#FFF',
+    },
+    stepLabel: {
+      fontFamily: fonts.bodyMedium,
       fontSize: 11,
+      color: p.textMuted,
+      textAlign: 'center',
+    },
+    stepLabelActive: {
+      color: p.primary,
+      fontFamily: fonts.bodySemiBold,
     },
 
     listContent: {
@@ -815,7 +820,7 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number) {
       flexGrow: 1,
     },
     messageBlock: {
-      marginBottom: spacing.md + 2,
+      marginBottom: spacing.md + 4,
       alignItems: 'flex-start',
     },
     messageBlockUser: {
@@ -831,17 +836,24 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number) {
       justifyContent: 'flex-end',
     },
     avatarSpacer: {
-      width: 44,
+      width: 38,
     },
     bubbleWrap: {
-      maxWidth: '84%',
+      maxWidth: '82%',
       alignItems: 'flex-start',
     },
     bubbleWrapUser: {
       alignItems: 'flex-end',
     },
+    senderLabel: {
+      fontFamily: fonts.bodySemiBold,
+      fontSize: 11,
+      color: p.primary,
+      marginBottom: 4,
+      marginLeft: 4,
+    },
     bubble: {
-      borderRadius: radius.xl,
+      borderRadius: 20,
       paddingVertical: spacing.md,
       paddingHorizontal: spacing.lg,
     },
@@ -849,28 +861,28 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number) {
       backgroundColor: p.surface,
       borderWidth: 1,
       borderColor: p.border,
-      borderBottomLeftRadius: radius.sm,
-      borderLeftWidth: 3,
-      borderLeftColor: p.primary,
+      borderBottomLeftRadius: 6,
     },
     bubbleUser: {
-      borderBottomRightRadius: radius.sm,
+      borderBottomRightRadius: 6,
     },
     bubbleText: {
       ...typography.body,
       color: p.text,
-      lineHeight: 23,
+      lineHeight: 22,
+      fontSize: 15,
     },
     bubbleTextUser: {
       ...typography.body,
       color: '#FFFFFF',
-      lineHeight: 23,
+      lineHeight: 22,
+      fontSize: 15,
     },
     time: {
       ...typography.caption,
       fontSize: 10,
       color: p.textLight,
-      marginTop: 5,
+      marginTop: 4,
       marginLeft: 4,
     },
     timeUser: {
@@ -881,7 +893,8 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.sm,
-      minWidth: 120,
+      minWidth: 128,
+      paddingVertical: 14,
     },
     typingDots: {
       flexDirection: 'row',
@@ -889,9 +902,9 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number) {
       gap: 4,
     },
     dot: {
-      width: 7,
-      height: 7,
-      borderRadius: 4,
+      width: 6,
+      height: 6,
+      borderRadius: 3,
       backgroundColor: p.primary,
       opacity: 0.35,
     },
@@ -903,13 +916,22 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number) {
     },
 
     footer: {
-      paddingTop: spacing.sm,
+      paddingTop: spacing.md,
       backgroundColor: p.surface,
+      borderTopLeftRadius: radius.xxl,
+      borderTopRightRadius: radius.xxl,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: p.border,
     },
     quickRepliesWrap: {
       paddingBottom: spacing.sm,
+    },
+    quickRepliesHint: {
+      fontFamily: fonts.bodySemiBold,
+      fontSize: 12,
+      color: p.textMuted,
+      paddingHorizontal: pagePad,
+      marginBottom: spacing.sm,
     },
     quickReplies: {
       paddingHorizontal: pagePad,
@@ -918,16 +940,16 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number) {
     chip: {
       borderRadius: radius.pill,
       borderWidth: 1,
-      borderColor: isDark ? p.border : p.border,
-      backgroundColor: isDark ? p.surfaceMuted : p.surface,
-      paddingVertical: 11,
+      borderColor: p.primary,
+      backgroundColor: p.primarySoft,
+      paddingVertical: 10,
       paddingHorizontal: spacing.lg,
       maxWidth: 220,
     },
     chipText: {
       fontFamily: fonts.bodySemiBold,
       fontSize: 14,
-      color: isDark ? p.text : p.primary,
+      color: p.primary,
     },
     saveWrap: {
       marginHorizontal: pagePad,
@@ -936,8 +958,10 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number) {
       overflow: 'hidden',
     },
     saveBar: {
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+      gap: spacing.sm,
       paddingVertical: spacing.md + 4,
     },
     saveBarText: {
@@ -951,12 +975,10 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number) {
       marginBottom: spacing.md,
     },
     hospitalCtaHint: {
-      ...typography.caption,
       fontFamily: fonts.bodySemiBold,
+      fontSize: 12,
       color: p.textMuted,
       marginBottom: spacing.sm,
-      fontSize: 12,
-      letterSpacing: 0.2,
     },
     hospitalCtaOuter: {
       borderRadius: radius.xl,
@@ -966,12 +988,22 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number) {
       borderRadius: radius.xl,
       paddingVertical: spacing.md + 2,
       paddingHorizontal: spacing.lg,
-      alignItems: 'flex-start',
+      alignItems: 'center',
       justifyContent: 'center',
-      gap: 4,
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    hospitalCtaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    hospitalCtaTextCol: {
+      flex: 1,
+      gap: 2,
     },
     hospitalCtaMuted: {
-      backgroundColor: p.surface,
+      backgroundColor: p.surfaceInset,
       borderWidth: 1,
       borderColor: p.border,
     },
@@ -979,11 +1011,6 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number) {
       fontFamily: fonts.bodySemiBold,
       fontSize: 15,
       color: p.text,
-    },
-    hospitalCtaSub: {
-      ...typography.caption,
-      color: p.textMuted,
-      lineHeight: 18,
     },
     hospitalCtaTitleLight: {
       fontFamily: fonts.bodySemiBold,
@@ -997,51 +1024,48 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number) {
     },
     composer: {
       flexDirection: 'row',
-      alignItems: 'flex-end',
+      alignItems: 'center',
       gap: spacing.sm,
       marginHorizontal: pagePad,
-      padding: spacing.sm,
+      marginBottom: spacing.xs,
+      minHeight: 56,
+      paddingVertical: 6,
+      paddingLeft: spacing.md,
+      paddingRight: 6,
       borderRadius: radius.xxl,
-      backgroundColor: p.surface,
+      backgroundColor: p.surfaceInset,
       borderWidth: 1,
       borderColor: p.border,
     },
     input: {
       flex: 1,
       minHeight: 44,
-      maxHeight: 120,
-      borderRadius: radius.xl,
-      backgroundColor: p.surfaceInset,
-      paddingHorizontal: spacing.lg,
-      paddingVertical: Platform.OS === 'ios' ? spacing.md : spacing.sm,
+      maxHeight: 110,
+      paddingTop: Platform.OS === 'ios' ? 12 : 10,
+      paddingBottom: Platform.OS === 'ios' ? 12 : 10,
+      paddingRight: spacing.sm,
       fontFamily: fonts.body,
       fontSize: pagePad <= 16 ? 15 : 16,
-      lineHeight: 22,
+      lineHeight: 20,
       color: p.text,
       includeFontPadding: false,
+      textAlignVertical: 'center',
     },
     sendBtnOuter: {
-      borderRadius: radius.xl,
-      overflow: 'hidden',
-    },
-    sendBtn: {
-      minHeight: 44,
-      minWidth: 64,
-      paddingHorizontal: spacing.lg,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
       alignItems: 'center',
       justifyContent: 'center',
+      alignSelf: 'center',
     },
-    sendBtnDisabled: {
+    sendBtnReady: {
+      backgroundColor: p.primary,
+    },
+    sendBtnIdle: {
       backgroundColor: p.border,
-    },
-    sendBtnText: {
-      fontFamily: fonts.bodySemiBold,
-      fontSize: 15,
-      color: '#FFFFFF',
-    },
-    sendBtnTextDisabled: {
-      color: p.textMuted,
     },
     pressed: { opacity: 0.88 },
   });
 }
+

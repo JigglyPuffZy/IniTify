@@ -7,6 +7,7 @@ import { databaseService } from '@/src/services/database/database.service';
 
 /**
  * Shows an on-screen alert when emergency status becomes ACTIVE.
+ * Opens a real SMS draft to the emergency contact (user taps Send).
  * Push notifications are skipped in Expo Go (SDK 53+).
  */
 export function EmergencyActiveMonitor() {
@@ -42,6 +43,7 @@ export function EmergencyActiveMonitor() {
             heatRiskLevel: assessment?.level ?? null,
             lastKnownLocation: location,
             contact: emergencyContact,
+            openSms: true,
           })
           .then((result) => {
             if (result.notification) {
@@ -55,9 +57,18 @@ export function EmergencyActiveMonitor() {
           });
       }
 
-      void notifyEmergencyActive(emergencyState, () => {
-        router.push('/emergency');
-      });
+      void notifyEmergencyActive(
+        emergencyState,
+        () => {
+          router.push('/emergency');
+        },
+        {
+          userName: profile.name,
+          contact: emergencyContact,
+          heatRiskLevel: assessment?.level ?? null,
+          location,
+        },
+      );
     }
 
     if (!isActive) {

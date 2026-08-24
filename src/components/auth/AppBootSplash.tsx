@@ -1,1 +1,0 @@
-export { BrandedSplash } from './BrandedSplash';

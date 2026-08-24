@@ -133,10 +133,8 @@ export const TIFY_DISCLAIMER =
   'Paalala: IniTify at si Tify ay decision-support lang — hindi medical diagnosis o treatment.';
 
 export const TIFY_STEP_SCRIPTS = {
-  greeting: (name: string, heatLine: string) =>
-    `Hi ${name}! Ako si **Tify**, IniTify safety assistant mo sa Tuguegarao.${heatLine}\n\n` +
-    'Quick check-in lang — **hydration, activity, at how you feel** sa init.\n\n' +
-    'Una: Kumusta hydration mo ngayon?',
+  greeting: (name: string, _heatLine: string) =>
+    `Hi ${name}. I'm Tify, your personal AI companion for heat safety.`,
 
   hydrationAck: (status: string) =>
     `Noted — **${status}**.\n\nSunod: **Anong activity level mo today?** (Low / Moderate / High)`,

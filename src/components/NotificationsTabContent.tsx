@@ -67,7 +67,7 @@ export function NotificationsTabContent({
           <PageMasthead
             overline="IniTify"
             title="Notifications"
-            subtitle="Alerts and reminders inside the app — no phone permission needed."
+            subtitle="Heat, check-in, and emergency alerts — also sent to your phone notifications."
           />
 
           {unread > 0 ? (

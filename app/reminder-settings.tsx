@@ -95,7 +95,7 @@ export default function ReminderSettingsScreen() {
     <Screen
       overline="Reminders"
       title="Check-In Reminders"
-      subtitle="Reminders show up in the Notifications tab — no phone permission needed."
+      subtitle="Reminders appear on your phone notification shade and in the Notifications tab."
       back
       horizontalPadding={horizontalPadding}
     >
@@ -126,7 +126,7 @@ export default function ReminderSettingsScreen() {
           <>
             <Text style={styles.heroEyebrow}>Next check-in reminder</Text>
             <Text style={styles.heroTime}>{nextReminderLabel ?? 'After you save'}</Text>
-            <Text style={styles.heroHint}>{selectedFrequencyLabel} · in-app notification</Text>
+            <Text style={styles.heroHint}>{selectedFrequencyLabel} · phone + in-app</Text>
           </>
         ) : (
           <>
@@ -145,7 +145,7 @@ export default function ReminderSettingsScreen() {
           <View style={styles.sectionHeadText}>
             <Text style={styles.sectionTitle}>Where reminders appear</Text>
             <Text style={styles.sectionSubtitle}>
-              Open the Notifications tab to see check-in reminders and heat alerts inside IniTify.
+              Allow notifications when prompted so check-in reminders and heat alerts reach your phone.
             </Text>
           </View>
         </View>

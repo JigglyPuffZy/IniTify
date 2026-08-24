@@ -31,6 +31,7 @@ import { checkInService } from '@/src/services/check-in/check-in.service';
 import { reminderManager } from '@/src/services/check-in/reminder-manager.service';
 import { shouldShowWeatherSafetyAlert, shouldSendPeriodicReminder } from '@/src/services/check-in/reminder-scheduler.service';
 import { inAppNotificationService } from '@/src/services/notifications/in-app-notification.service';
+import { notificationService } from '@/src/services/notifications/notification.service';
 import { RISK_LEVEL_LABELS } from '@/src/constants/risk-levels';
 import { primaryHealthCondition } from '@/src/constants/health-conditions';
 import { useAuth } from '@/src/context/AuthContext';
@@ -527,6 +528,9 @@ export function IniTifyProvider({ children }: { children: ReactNode }) {
   const updateReminderSettings = useCallback(
     async (settings: ReminderSettings) => {
       if (!user || !profile) return settings;
+      if (settings.remindersEnabled && settings.frequency !== 'disabled') {
+        await notificationService.requestPermission();
+      }
       const saved = await checkInService.saveReminderSettings(user.id, settings);
       const rescheduled = await reminderManager.reschedule(user.id, profile, saved);
       setReminderSettings(rescheduled);
@@ -574,6 +578,7 @@ export function IniTifyProvider({ children }: { children: ReactNode }) {
       if (result) {
         setInAppNotifications((prev) => [result, ...prev]);
         await checkInService.saveLastWeatherAlertSentAt(user.id, new Date().toISOString());
+        void notificationService.sendWeatherSafetyReminder(body);
       }
     })();
   }, [user, profile, heatReading, assessment, lastCheckIn, emergencyTick]);
@@ -631,6 +636,7 @@ export function IniTifyProvider({ children }: { children: ReactNode }) {
         if (!added) return;
 
         setInAppNotifications((prev) => [added, ...prev]);
+        void notificationService.sendHealthCheckInReminderNow();
         const updated = await reminderManager.onReminderFired(user.id, profile, settings);
         setReminderSettings(updated);
       })();
@@ -652,7 +658,12 @@ export function IniTifyProvider({ children }: { children: ReactNode }) {
         href: '/(tabs)/emergency',
         dedupeMinutes: 60,
       });
-      if (added) setInAppNotifications((prev) => [added, ...prev]);
+      if (added) {
+        setInAppNotifications((prev) => [added, ...prev]);
+        void notificationService.sendEmergencyActiveAlert(
+          'Heat emergency detected. Open Emergency for hotlines and first aid.',
+        );
+      }
     })();
   }, [user?.id, profile, emergencyState.isActive]);
 
@@ -676,7 +687,13 @@ export function IniTifyProvider({ children }: { children: ReactNode }) {
         href: '/safety-tips',
         dedupeMinutes: 180,
       });
-      if (added) setInAppNotifications((prevList) => [added, ...prevList]);
+      if (added) {
+        setInAppNotifications((prevList) => [added, ...prevList]);
+        void notificationService.sendHeatRiskAlert(
+          level,
+          'Your risk level increased. Review safety tips and stay hydrated.',
+        );
+      }
     })();
   }, [user?.id, profile, assessment?.level]);
 

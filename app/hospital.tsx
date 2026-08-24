@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Text, StyleSheet, View, Pressable } from 'react-native';
+import { Text, StyleSheet, View } from 'react-native';
 import { Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useIniTify } from '@/src/context/IniTifyContext';
@@ -8,43 +8,63 @@ import { HeaderIconButton } from '@/src/components/layout/PageMasthead';
 import { EmptyState, SectionHeader, SurfaceCard } from '@/src/components/ScreenContainer';
 import { Button } from '@/src/components/UiComponents';
 import { hospitalService, type HospitalInfo } from '@/src/services/hospital/hospital.service';
+import { locationService } from '@/src/services/location/location.service';
 import { databaseService } from '@/src/services/database/database.service';
 import { TUGUEGARAO_STUDY_AREA } from '@/src/constants/study-area';
 import { useResponsive } from '@/src/utils/responsive';
 import { radius, spacing, typography } from '@/src/theme';
 import { useAppTheme } from '@/src/theme/useAppTheme';
 import type { LegacyThemeColors } from '@/src/theme/legacy-colors';
+import type { UserLocation } from '@/src/models/location';
+
+const CITY_CENTER: UserLocation = {
+  latitude: TUGUEGARAO_STUDY_AREA.latitude,
+  longitude: TUGUEGARAO_STUDY_AREA.longitude,
+  accuracy: null,
+  retrievedAt: new Date(0).toISOString(),
+};
 
 export default function HospitalScreen() {
-  const { profile, location } = useIniTify();
+  const { profile, location, locationStatus, refreshLocation } = useIniTify();
   const { horizontalPadding } = useResponsive();
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [message, setMessage] = useState<string | null>(null);
   const [hospitals, setHospitals] = useState<HospitalInfo[]>([]);
   const [loading, setLoading] = useState(false);
-
-  const searchLocation = location ?? {
-    latitude: TUGUEGARAO_STUDY_AREA.latitude,
-    longitude: TUGUEGARAO_STUDY_AREA.longitude,
-    accuracy: null,
-    retrievedAt: new Date().toISOString(),
-  };
+  const [usedFallback, setUsedFallback] = useState(false);
+  const [searchLocation, setSearchLocation] = useState<UserLocation | null>(location);
 
   const handleFindHospitals = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await hospitalService.findAllRanked(searchLocation);
-      setMessage(result.message ?? null);
+      await refreshLocation('hospital');
+      // locationService is updated synchronously by refreshLocation.
+      const fresh = locationService.getLastKnownLocation();
+      const isFallback = !fresh;
+      const activeLocation = fresh ?? {
+        ...CITY_CENTER,
+        retrievedAt: new Date().toISOString(),
+      };
+
+      setSearchLocation(activeLocation);
+      setUsedFallback(isFallback);
+
+      const result = await hospitalService.findAllRanked(activeLocation);
+      setMessage(
+        isFallback
+          ? 'Location unavailable — distances are from Tuguegarao city center. Turn on GPS for accurate nearest hospital.'
+          : (result.message ?? null),
+      );
       setHospitals(result.data ?? []);
       const nearest = result.data?.[0];
-      if (profile && nearest) {
-        void databaseService.sync.syncHospitalLookup(profile, nearest, searchLocation);
+      if (profile && nearest && !isFallback) {
+        void databaseService.sync.syncHospitalLookup(profile, nearest, activeLocation);
       }
     } finally {
       setLoading(false);
     }
-  }, [searchLocation.latitude, searchLocation.longitude, profile]);
+  }, [profile, refreshLocation]);
 
   useEffect(() => {
     void handleFindHospitals();
@@ -53,9 +73,20 @@ export default function HospitalScreen() {
   if (!profile) return <Redirect href="/" />;
 
   async function handleNavigate(hospital: HospitalInfo) {
-    const result = await hospitalService.openNavigation(hospital, searchLocation);
+    const origin = searchLocation ?? location ?? {
+      ...CITY_CENTER,
+      retrievedAt: new Date().toISOString(),
+    };
+    const result = await hospitalService.openNavigation(hospital, origin);
     setMessage(result.message);
   }
+
+  const gpsHint =
+    locationStatus === 'denied'
+      ? 'Location permission is off. Enable it in Settings for accurate distances.'
+      : usedFallback
+        ? 'Using city-center estimate — enable GPS for your true nearest hospital.'
+        : null;
 
   return (
     <Screen
@@ -72,6 +103,13 @@ export default function HospitalScreen() {
         />
       }
     >
+      {gpsHint ? (
+        <View style={styles.gpsBanner}>
+          <Ionicons name="location-outline" size={16} color={colors.primary} />
+          <Text style={styles.gpsBannerText}>{gpsHint}</Text>
+        </View>
+      ) : null}
+
       {!loading && hospitals.length === 0 ? (
         <EmptyState
           title="No hospitals found"
@@ -172,15 +210,21 @@ function Chip({
 
 function createStyles(colors: LegacyThemeColors) {
   return StyleSheet.create({
-  refreshBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.sm,
+  gpsBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
     backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    marginBottom: spacing.md,
   },
-  pressed: { opacity: 0.85 },
+  gpsBannerText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    flex: 1,
+  },
   list: { gap: spacing.md },
   nearest: { borderColor: colors.primary, borderWidth: 1.5 },
   cardHead: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },

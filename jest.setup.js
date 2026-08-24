@@ -5,7 +5,7 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 process.env.EXPO_PUBLIC_HOSPITAL_DATA_PROVIDER = 'static-tuguegarao';
 process.env.EXPO_PUBLIC_MAPS_PROVIDER = 'google';
 process.env.EXPO_PUBLIC_DEV_MANUAL_HEAT = 'false';
-process.env.EXPO_PUBLIC_WEATHERAPI_KEY = 'test-weather-key';
+process.env.EXPO_PUBLIC_EMERGENCY_DEV_MODE = 'false';
 
 jest.mock('react-native', () => {
   const RN = jest.requireActual('react-native');
@@ -50,5 +50,11 @@ jest.mock('expo-notifications', () => ({
   getPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
   requestPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
   scheduleNotificationAsync: jest.fn(async () => 'test-notification-id'),
-  AndroidNotificationPriority: { MAX: 'max' },
+  cancelScheduledNotificationAsync: jest.fn(async () => undefined),
+  addNotificationReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  setNotificationChannelAsync: jest.fn(async () => undefined),
+  AndroidImportance: { HIGH: 4, MAX: 5 },
+  AndroidNotificationPriority: { DEFAULT: 'default', HIGH: 'high', MAX: 'max' },
+  SchedulableTriggerInputTypes: { DATE: 'date', TIME_INTERVAL: 'timeInterval' },
 }));

@@ -15,7 +15,9 @@ import type { EmergencyContact, UserProfile } from '@/src/models/user';
 import type { EmergencyState } from '@/src/models/emergency';
 import { PageMasthead, ScreenTopAccent } from '@/src/components/layout/PageMasthead';
 import { dialPhoneNumber } from '@/src/services/emergency/emergency-hotline.service';
+import { emergencyContactService } from '@/src/services/emergency/emergency.service';
 import { databaseService } from '@/src/services/database/database.service';
+import { useIniTify } from '@/src/context/IniTifyContext';
 import { EMERGENCY_HOTLINES, type EmergencyHotline } from '@/src/config/emergency.config';
 import { getFirstAidGuidanceForProfile } from '@/src/constants/first-aid';
 import { TUGUEGARAO_STUDY_AREA } from '@/src/constants/study-area';
@@ -39,9 +41,11 @@ export function EmergencyTabContent({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { palette, isDark } = useAppTheme();
+  const { assessment, location } = useIniTify();
   const styles = useMemo(() => createStyles(palette, isDark), [palette, isDark]);
   const [callResult, setCallResult] = useState<string | null>(null);
   const [dialingId, setDialingId] = useState<string | null>(null);
+  const [smsSending, setSmsSending] = useState(false);
 
   const primaryHotline = EMERGENCY_HOTLINES[0];
   const firstAid = useMemo(() => getFirstAidGuidanceForProfile(profile), [profile]);
@@ -57,6 +61,31 @@ export function EmergencyTabContent({
       });
     }
     setDialingId(null);
+  }
+
+  async function handleTextEmergencyContact() {
+    if (!emergencyContact?.phone || smsSending) return;
+    setSmsSending(true);
+    try {
+      const result = await emergencyContactService.prepareNotification({
+        userName: profile.name,
+        heatRiskLevel: assessment?.level ?? null,
+        lastKnownLocation: location,
+        contact: emergencyContact,
+        openSms: true,
+      });
+      setCallResult(result.smsMessage ?? result.error ?? 'SMS ready.');
+      if (result.notification) {
+        void databaseService.sync.syncContactNotification(
+          profile,
+          emergencyContact,
+          result.notification,
+          result.sent ? 'sent' : 'prepared',
+        );
+      }
+    } finally {
+      setSmsSending(false);
+    }
   }
 
   return (
@@ -121,6 +150,68 @@ export function EmergencyTabContent({
           ) : null}
 
           {callResult ? <Text style={styles.callResult}>{callResult}</Text> : null}
+
+          {emergencyContact?.phone ? (
+            <View style={styles.contactActions}>
+              <Pressable
+                onPress={() =>
+                  void handleDial({
+                    id: 'personal',
+                    label: emergencyContact.name,
+                    phone: emergencyContact.phone,
+                  })
+                }
+                style={({ pressed }) => [styles.contactActionBtn, styles.callContactBtn, pressed && styles.pressed]}
+                accessibilityRole="button"
+                accessibilityLabel={`Call emergency contact ${emergencyContact.name}`}
+                disabled={dialingId === 'personal'}
+              >
+                {dialingId === 'personal' ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <>
+                    <Ionicons name="call" size={20} color="#FFF" />
+                    <View style={styles.smsBtnTextWrap}>
+                      <Text style={styles.callContactTitle}>Call {emergencyContact.name}</Text>
+                      <Text style={styles.callContactSub}>Opens Phone dialer</Text>
+                    </View>
+                  </>
+                )}
+              </Pressable>
+              <Pressable
+                onPress={() => void handleTextEmergencyContact()}
+                style={({ pressed }) => [styles.contactActionBtn, styles.smsBtn, pressed && styles.pressed]}
+                accessibilityRole="button"
+                accessibilityLabel={`Text emergency contact ${emergencyContact.name}`}
+                disabled={smsSending}
+              >
+                {smsSending ? (
+                  <ActivityIndicator color={palette.primary} />
+                ) : (
+                  <>
+                    <Ionicons name="chatbubble-ellipses" size={20} color={palette.primary} />
+                    <View style={styles.smsBtnTextWrap}>
+                      <Text style={styles.smsBtnTitle}>Text {emergencyContact.name}</Text>
+                      <Text style={styles.smsBtnSub}>
+                        Opens Messages — tap Send
+                      </Text>
+                    </View>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => router.push('/setup')}
+              style={({ pressed }) => [styles.smsBtn, styles.smsBtnSolo, pressed && styles.pressed]}
+            >
+              <Ionicons name="person-add-outline" size={20} color={palette.primary} />
+              <View style={styles.smsBtnTextWrap}>
+                <Text style={styles.smsBtnTitle}>Add emergency contact</Text>
+                <Text style={styles.smsBtnSub}>Required to call or text your contact</Text>
+              </View>
+            </Pressable>
+          )}
 
           <SectionRule label="Emergency hotlines" styles={styles} />
 
@@ -382,6 +473,63 @@ function createStyles(p: AppPalette, isDark: boolean) {
       color: p.textMuted,
       textAlign: 'center',
       marginBottom: spacing.lg,
+    },
+    contactActions: {
+      gap: spacing.md,
+      marginBottom: spacing.xxl,
+    },
+    contactActionBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      borderRadius: radius.xl,
+      paddingVertical: spacing.lg,
+      paddingHorizontal: spacing.lg,
+      minHeight: 64,
+      ...shadow,
+    },
+    callContactBtn: {
+      backgroundColor: p.primary,
+    },
+    callContactTitle: {
+      fontFamily: fonts.bodySemiBold,
+      fontSize: 15,
+      color: '#FFFFFF',
+    },
+    callContactSub: {
+      ...typography.caption,
+      color: 'rgba(255,255,255,0.85)',
+      marginTop: 2,
+    },
+    smsBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      backgroundColor: p.surface,
+      borderRadius: radius.xl,
+      borderWidth: 1,
+      borderColor: p.primary,
+      paddingVertical: spacing.lg,
+      paddingHorizontal: spacing.lg,
+      minHeight: 64,
+      ...shadow,
+    },
+    smsBtnSolo: {
+      marginBottom: spacing.xxl,
+    },
+    smsBtnTextWrap: {
+      flex: 1,
+      minWidth: 0,
+    },
+    smsBtnTitle: {
+      fontFamily: fonts.bodySemiBold,
+      fontSize: 15,
+      color: p.text,
+    },
+    smsBtnSub: {
+      ...typography.caption,
+      color: p.textMuted,
+      marginTop: 2,
     },
 
     sectionRule: {

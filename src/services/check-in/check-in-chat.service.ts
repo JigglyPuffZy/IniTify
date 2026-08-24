@@ -132,18 +132,9 @@ function mergeDraftFromUserText(draft: CheckInChatDraft, userText: string): Chec
   };
 }
 
-function buildAiGreeting(profile: UserProfile, heatIndexC: number | null): string {
-  const firstName = profile.name.split(' ')[0];
-  const heatLabel =
-    heatIndexC != null ? `${(Math.round(heatIndexC * 10) / 10).toFixed(1)}°C` : null;
-  const heat = heatLabel
-    ? ` Live heat index ngayon sa Tuguegarao: **${heatLabel}** (same as Weather tab).`
-    : '';
-  return (
-    `Hi ${firstName}! Ako si Tify.${heat}\n\n` +
-    'Sabihin mo freely kung anong nararamdaman mo sa init — uhaw, pagod, masakit, o okay lang. ' +
-    'Sasagutin ko based sa sinabi mo, hindi generic script.'
-  );
+function buildAiGreeting(profile: UserProfile, _heatIndexC: number | null): string {
+  const firstName = profile.name.split(' ')[0] || profile.name;
+  return `Hi ${firstName}. I'm Tify, your personal AI companion for heat safety.`;
 }
 
 function buildSummary(draft: CheckInChatDraft): string {
@@ -162,15 +153,10 @@ function greetingMessage(
   heatIndexC: number | null,
   usesAi: boolean,
 ): CheckInChatMessage {
-  const heatLabel =
-    heatIndexC != null ? `${(Math.round(heatIndexC * 10) / 10).toFixed(1)}°C` : null;
-  const heatLine = heatLabel
-    ? ` Live heat index in Tuguegarao is ${heatLabel} right now.`
-    : '';
-
+  const firstName = profile.name.split(' ')[0] || profile.name;
   const intro = usesAi
     ? buildAiGreeting(profile, heatIndexC)
-    : `Hi ${profile.name}! I'm Tify, your IniTify safety assistant.${heatLine}\n\nFirst up — how's your hydration right now?`;
+    : `Hi ${firstName}. I'm Tify, your personal AI companion for heat safety.`;
 
   return msg('assistant', intro);
 }

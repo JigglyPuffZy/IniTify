@@ -3,10 +3,11 @@ import type { UserProfile } from '@/src/models/user';
 import { checkInService } from '@/src/services/check-in/check-in.service';
 import { computeNextReminderAt } from '@/src/services/check-in/reminder-scheduler.service';
 import { databaseService } from '@/src/services/database/database.service';
+import { notificationService } from '@/src/services/notifications/notification.service';
+import { canUseNativeNotifications } from '@/src/services/notifications/notifications.constants';
 
 /**
- * In-app reminder scheduling only.
- * Does not import expo-notifications (Expo Go SDK 53+ cannot load phone push).
+ * Schedules check-in reminders (in-app timestamp + phone notification when available).
  */
 export const reminderManager = {
   async reschedule(
@@ -16,6 +17,8 @@ export const reminderManager = {
   ): Promise<ReminderSettings> {
     const lastCheckIn = await checkInService.getLastCheckIn(userId);
     let next: ReminderSettings = { ...settings };
+
+    await notificationService.cancelScheduledNotification(settings.scheduledNotificationId);
 
     if (!settings.remindersEnabled || settings.frequency === 'disabled') {
       next = {
@@ -27,6 +30,13 @@ export const reminderManager = {
       const nextDate = computeNextReminderAt(settings, new Date(), lastCheckIn);
       next.nextReminderAt = nextDate?.toISOString() ?? null;
       next.scheduledNotificationId = null;
+
+      if (nextDate && canUseNativeNotifications()) {
+        const scheduled = await notificationService.scheduleHealthCheckInReminder(nextDate);
+        if (scheduled.status === 'success' && scheduled.data) {
+          next.scheduledNotificationId = scheduled.data;
+        }
+      }
     }
 
     const saved = await checkInService.saveReminderSettings(userId, next);

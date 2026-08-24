@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useIniTify } from '@/src/context/IniTifyContext';
 import { Screen } from '@/src/components/layout/Screen';
 import { EmptyState } from '@/src/components/ScreenContainer';
-import { formatCheckInLine } from '@/src/components/CheckInForm';
+import { formatCheckInLine } from '@/src/utils/format-check-in';
 import { getPhDateKey } from '@/src/utils/ph-date';
 import { useResponsive } from '@/src/utils/responsive';
 import { useAppTheme } from '@/src/theme/useAppTheme';

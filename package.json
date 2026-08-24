@@ -9,6 +9,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build": "tsc --noEmit",
+    "build:apk": "eas build -p android --profile preview",
+    "build:aab": "eas build -p android --profile production",
+    "eas:env:push": "eas env:push --environment preview --path .env",
     "test": "jest",
     "typecheck": "tsc --noEmit"
   },

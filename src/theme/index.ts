@@ -98,7 +98,7 @@ export const layout = {
   itemGap: 12,
   buttonHeight: 48,
   touchTarget: 44,
-  /** Sheet overlap over hero gradient (HeroScreen / ScreenSheet) */
+  /** Sheet overlap over hero gradient */
   heroCurve: 24,
 };
 

@@ -84,16 +84,29 @@ function mapSupabaseUser(user: {
   return toAuthUser(user.id, user.email ?? '', displayName, 'supabase');
 }
 
-function formatSupabaseAuthError(error: { message?: string; code?: string }): string {
+function formatSupabaseAuthError(error: { message?: string; code?: string; status?: number }): string {
   const code = error.code?.toLowerCase() ?? '';
   const message = error.message ?? '';
   const lower = message.toLowerCase();
 
+  if (
+    code === 'over_email_send_rate_limit' ||
+    code === 'over_request_rate_limit' ||
+    lower.includes('rate limit') ||
+    lower.includes('email rate limit exceeded') ||
+    lower.includes('limit exceeded')
+  ) {
+    return (
+      'Sign-up/login email limit reached on Supabase (free tier). ' +
+      'Wait a few minutes, or ask the admin to turn OFF "Confirm email" in Supabase → Authentication → Providers → Email, ' +
+      'then confirm existing users under Authentication → Users.'
+    );
+  }
   if (code === 'email_not_confirmed' || lower.includes('email not confirmed')) {
-    return 'Please confirm your email first. Open the verification link Supabase sent you, then sign in again.';
+    return 'Please confirm your email first. Open the verification link Supabase sent you, then sign in again. If no email arrived, the project may have hit the email send limit — ask admin to disable Confirm email.';
   }
   if (code === 'invalid_credentials' || lower.includes('invalid login credentials')) {
-    return 'Invalid email or password. If you just signed up, confirm your email first.';
+    return 'Invalid email or password. If you just signed up, confirm your email first (or ask admin to confirm your user in Supabase).';
   }
   if (code === 'user_already_registered' || lower.includes('already registered')) {
     return 'An account with this email already exists. Sign in instead.';

@@ -1,13 +1,9 @@
 /**
- * Emergency thresholds — configurable demo values for HeatHits / IniTify.
- * Research document describes triggers but not exact numbers; confirm with adviser.
+ * Emergency thresholds (confirm final numbers with research adviser if needed).
  */
 export interface EmergencyThresholdConfig {
-  /** Number of failed safety prompt responses before emergency indicator */
   failedSafetyPromptCount: number | null;
-  /** Duration of inactivity in minutes before emergency indicator */
   inactivityDurationMinutes: number | null;
-  /** Safety prompt interval in minutes */
   safetyPromptIntervalMinutes: number | null;
 }
 
@@ -17,11 +13,7 @@ export const emergencyThresholdConfig: EmergencyThresholdConfig = {
   safetyPromptIntervalMinutes: 5,
 };
 
-/**
- * Tuguegarao City emergency hotlines (study area).
- * Source: Tuguegarao City Government — https://tuguegaraocity.gov.ph/contact-us
- * Verify periodically; numbers may change.
- */
+/** Tuguegarao City hotlines — https://tuguegaraocity.gov.ph/contact-us */
 export interface EmergencyHotline {
   id: string;
   label: string;
@@ -62,5 +54,6 @@ export const EMERGENCY_HOTLINES: EmergencyHotline[] = [
   },
 ];
 
-/** Safe development mode — prevents real emergency messages */
-export const EMERGENCY_DEV_MODE = true;
+/** true = log only; false/unset = open real SMS in Messages app */
+export const EMERGENCY_DEV_MODE =
+  process.env.EXPO_PUBLIC_EMERGENCY_DEV_MODE === 'true';

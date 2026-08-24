@@ -8,10 +8,12 @@
     "scheme": "initify",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.initify.app"
     },
     "android": {
-      "jsEngine": "jsc",
+      "package": "com.initify.app",
+      "versionCode": 2,
       "softwareKeyboardLayoutMode": "pan",
       "adaptiveIcon": {
         "backgroundColor": "#1E3A8A",
@@ -30,13 +32,17 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#1E3A8A"
+          "backgroundColor": "#1E3A8A",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200
         }
       ],
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "IniTify uses your location for heat-risk assessment and emergency assistance."
+          "locationAlwaysAndWhenInUsePermission": "IniTify uses your location for heat-risk assessment and emergency assistance.",
+          "isAndroidBackgroundLocationEnabled": false,
+          "isIosBackgroundLocationEnabled": false
         }
       ],
       [
@@ -51,6 +57,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c127686a-e191-48fc-9614-e6e8a6bb1a18"
+      }
+    },
+    "owner": "jigglypuff"
   }
 }

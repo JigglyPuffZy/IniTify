@@ -463,12 +463,13 @@ describe('recommendations', () => {
 });
 
 describe('emergency active alert', () => {
-  it('returns unavailable for phone push (in-app alerts used instead)', async () => {
+  it('sends a phone notification for emergency active', async () => {
     const { notificationService } = require('@/src/services/notifications/notification.service');
     const result = await notificationService.sendEmergencyActiveAlert(
       'Extreme heat risk, Repeated failed safety prompts',
     );
-    expect(result.status).toBe('unavailable');
+    expect(result.status).toBe('success');
+    expect(result.data).toBeTruthy();
   });
 });
 
