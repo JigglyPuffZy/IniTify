@@ -27,6 +27,7 @@ import { useAppTheme } from '@/src/theme/useAppTheme';
 import { cardShadow, fonts, layout, radius, spacing, typography } from '@/src/theme';
 import type { AppPalette } from '@/src/theme/palettes';
 import { getHeroGradient } from '@/src/theme/palettes';
+import type { LiveWeatherFacts } from '@/src/utils/live-heat';
 
 const ASSISTANT_NAME = 'Tify';
 
@@ -66,6 +67,7 @@ interface CheckInChatProps {
   profile: UserProfile;
   heatIndexC: number | null;
   riskLevel: HeatRiskLevel | null;
+  weatherFacts?: LiveWeatherFacts | null;
   location?: UserLocation | null;
   onRequestLocation?: () => Promise<void>;
   onSave: (input: {
@@ -210,6 +212,7 @@ export function CheckInChat({
   profile,
   heatIndexC,
   riskLevel,
+  weatherFacts = null,
   location = null,
   onRequestLocation,
   onSave,
@@ -250,7 +253,7 @@ export function CheckInChat({
 
   useEffect(() => {
     greetingHeatSynced.current = false;
-    const start = checkInChatService.startConversation(profile, heatIndexC);
+    const start = checkInChatService.startConversation(profile, heatIndexC, weatherFacts);
     setMessages(start.messages);
     setDraft(start.draft);
     setUsesAi(checkInChatService.isAiConfigured());
@@ -261,10 +264,10 @@ export function CheckInChat({
   useEffect(() => {
     if (heatIndexC == null || greetingHeatSynced.current) return;
     if (messages.length !== 1 || messages[0]?.role !== 'assistant') return;
-    const start = checkInChatService.startConversation(profile, heatIndexC);
+    const start = checkInChatService.startConversation(profile, heatIndexC, weatherFacts);
     setMessages(start.messages);
     greetingHeatSynced.current = true;
-  }, [heatIndexC, profile, messages]);
+  }, [heatIndexC, weatherFacts, profile, messages]);
 
   const scrollToEnd = useCallback(() => {
     requestAnimationFrame(() => {
@@ -395,6 +398,7 @@ export function CheckInChat({
           draft,
           messages: nextMessages,
           userText: trimmed,
+          weather: weatherFacts,
         });
 
         const fullTranscript = [...nextMessages, result.assistantMessage];
@@ -418,7 +422,7 @@ export function CheckInChat({
         setTyping(false);
       }
     },
-    [typing, saving, profile, heatIndexC, riskLevel, draft, messages, saveCheckIn],
+    [typing, saving, profile, heatIndexC, weatherFacts, riskLevel, draft, messages, saveCheckIn],
   );
 
   const renderMessage = ({ item, index }: { item: CheckInChatMessage; index: number }) => {

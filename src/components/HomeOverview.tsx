@@ -167,7 +167,9 @@ export function HomeOverview({
                 <View style={styles.heatStrip}>
                   <Ionicons name="flame" size={16} color={palette.primary} />
                   <Text style={styles.heatStripLabel}>Heat index</Text>
-                  <Text style={styles.heatStripValue}>{weather.heatIndexC}°C</Text>
+                  <Text style={styles.heatStripValue}>
+                    {Number(weather.heatIndexC.toFixed(1))}°C
+                  </Text>
                   <Text style={styles.heatStripSep}>·</Text>
                   <Text style={styles.heatStripFeels}>
                     Feels {Math.round(weather.feelsLikeC)}°

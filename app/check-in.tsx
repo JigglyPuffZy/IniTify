@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useIniTify } from '@/src/context/IniTifyContext';
 import { CheckInChat } from '@/src/components/CheckInChat';
 import type { CheckInChatMessage } from '@/src/models/check-in-chat';
-import { getLiveHeatIndexC } from '@/src/utils/live-heat';
+import { getLiveHeatIndexC, getLiveWeatherFacts } from '@/src/utils/live-heat';
 
 export default function CheckInScreen() {
   const router = useRouter();
@@ -22,6 +22,10 @@ export default function CheckInScreen() {
 
   const liveHeatIndexC = useMemo(
     () => getLiveHeatIndexC(currentWeather, heatReading),
+    [currentWeather, heatReading],
+  );
+  const weatherFacts = useMemo(
+    () => getLiveWeatherFacts(currentWeather, heatReading),
     [currentWeather, heatReading],
   );
 
@@ -70,6 +74,7 @@ export default function CheckInScreen() {
       <CheckInChat
         profile={profile}
         heatIndexC={liveHeatIndexC}
+        weatherFacts={weatherFacts}
         riskLevel={assessment?.level ?? null}
         location={location}
         onRequestLocation={() => refreshLocation('check_in')}

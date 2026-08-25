@@ -6,6 +6,7 @@ import {
 } from '@/src/models/user';
 import type { CheckInChatDraft } from '@/src/models/check-in-chat';
 import { formatConditionLabel, getActiveHealthConditions } from '@/src/constants/health-conditions';
+import type { LiveWeatherFacts } from '@/src/utils/live-heat';
 import {
   conditionHeatReminder,
   riskLevelGuidance,
@@ -14,6 +15,30 @@ import {
   TIFY_FORBIDDEN_TOPICS,
 } from './tify-knowledge';
 
+function buildDashboardWeatherBlock(weather: LiveWeatherFacts | null | undefined): string {
+  if (!weather || (weather.tempLabel == null && weather.heatIndexLabel == null)) {
+    return `## LIVE DASHBOARD WEATHER
+- Not available yet. Do NOT invent °C numbers. Say weather is still loading.`;
+  }
+
+  const lines = [
+    '## LIVE DASHBOARD WEATHER (source of truth — copy EXACTLY)',
+    `- Air temperature: ${weather.tempLabel != null ? `${weather.tempLabel}°C` : 'unavailable'}`,
+    `- Heat index: ${weather.heatIndexLabel != null ? `${weather.heatIndexLabel}°C` : 'unavailable'}`,
+    `- Feels like: ${weather.feelsLikeLabel != null ? `${weather.feelsLikeLabel}°C` : 'unavailable'}`,
+    `- Humidity: ${weather.humidity != null ? `${Math.round(weather.humidity)}%` : 'unavailable'}`,
+    weather.conditionText ? `- Condition: ${weather.conditionText}` : null,
+    '',
+    'Rules for degrees:',
+    '- These match the Home / Weather dashboard RIGHT NOW.',
+    '- If the user asks how hot it is, temperature, heat index, feels like, or °C — use ONLY these numbers.',
+    '- Never invent, estimate, round differently, or use training-data temperatures for Tuguegarao.',
+    '- Do not swap air temperature with heat index. Say which one you mean.',
+  ].filter(Boolean);
+
+  return lines.join('\n');
+}
+
 export function buildTifySystemPrompt(params: {
   profile: UserProfile;
   heatIndexC: number | null;
@@ -21,8 +46,10 @@ export function buildTifySystemPrompt(params: {
   draft: CheckInChatDraft;
   latestUserMessage?: string;
   symptomContext?: string;
+  weather?: LiveWeatherFacts | null;
 }): string {
-  const { profile, heatIndexC, riskLevel, draft, latestUserMessage, symptomContext } = params;
+  const { profile, heatIndexC, riskLevel, draft, latestUserMessage, symptomContext, weather } =
+    params;
 
   const conditions = getActiveHealthConditions(
     profile.riskFactors.healthConditions,
@@ -32,20 +59,27 @@ export function buildTifySystemPrompt(params: {
     .join(', ');
 
   const conditionTip = conditionHeatReminder(profile);
-  const riskTip = riskLevelGuidance(riskLevel, heatIndexC);
+  const riskTip = riskLevelGuidance(riskLevel, heatIndexC ?? weather?.heatIndexC ?? null);
   const age = profile.riskFactors.age ?? 'unknown';
   const heatLabel =
-    heatIndexC != null
-      ? `${(Math.round(heatIndexC * 10) / 10).toFixed(1)}°C heat index (LIVE — must match Weather tab exactly; do not invent or round to a different number)`
-      : 'heat index unavailable';
+    weather?.heatIndexLabel != null
+      ? `${weather.heatIndexLabel}°C heat index`
+      : heatIndexC != null
+        ? `${(Math.round(heatIndexC * 10) / 10).toFixed(1)}°C heat index`
+        : 'heat index unavailable';
+  const tempLabel =
+    weather?.tempLabel != null ? `${weather.tempLabel}°C air temp` : 'air temp unavailable';
   const risk = riskLevel ?? 'not assessed yet';
 
   return `You are Tify — a warm, doctor-minded health guide inside the IniTify app (HeatHits research) for Tuguegarao City, Cagayan, Philippines.
 
-## CRITICAL — LIVE HEAT INDEX
-- The live heat index is exactly: ${heatLabel}
-- When you mention heat, use THIS number only (one decimal). Never say a different heat index.
-- Air temperature may differ from heat index — do not confuse them.
+${buildDashboardWeatherBlock(weather)}
+
+## CRITICAL — LIVE HEAT / TEMPERATURE
+- Heat index (dashboard): ${heatLabel}
+- Air temperature (dashboard): ${tempLabel}
+- When you mention heat or degrees, use THESE dashboard numbers only.
+- Air temperature and heat index are different — never confuse them.
 - Every reply must be written fresh for THIS user's latest message and the chat history.
 - Answer what they actually said — quote or paraphrase their specific words (symptom, place, time, feeling).
 - NEVER paste canned lines, scripts, templates, or the same opener twice in a row.
@@ -70,7 +104,7 @@ If off-topic, briefly redirect in your own words — invent a fresh redirect eac
 ## User: ${profile.name} (age ${age})
 - Health conditions: ${conditions || 'None reported'}
 ${conditionTip ? `- Condition note (rephrase if used — do not paste verbatim): ${conditionTip}` : ''}
-- Location: Tuguegarao City · ${heatLabel} · Risk: ${risk}
+- Location: Tuguegarao City · ${tempLabel} · ${heatLabel} · Risk: ${risk}
 - Risk context (use only if relevant; rephrase): ${riskTip}
 - Last known hydration: ${profile.riskFactors.hydrationStatus ?? 'unknown'}
 - Last known activity: ${profile.riskFactors.activityLevel ?? 'unknown'}

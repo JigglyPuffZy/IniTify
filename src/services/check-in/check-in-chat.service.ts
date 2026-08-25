@@ -26,6 +26,8 @@ import {
   inferGeneralStatusFromSymptoms,
   inferHydrationFromSymptoms,
 } from './tify-symptom-guide';
+import type { LiveWeatherFacts } from '@/src/utils/live-heat';
+import { formatHeatIndexC, formatTempC } from '@/src/utils/live-heat';
 
 function withHospitalCta(
   result: CheckInChatTurnResult,
@@ -132,8 +134,16 @@ function mergeDraftFromUserText(draft: CheckInChatDraft, userText: string): Chec
   };
 }
 
-function buildAiGreeting(profile: UserProfile, _heatIndexC: number | null): string {
+function buildAiGreeting(profile: UserProfile, weather: LiveWeatherFacts | null): string {
   const firstName = profile.name.split(' ')[0] || profile.name;
+  const heat = weather?.heatIndexLabel ?? formatHeatIndexC(weather?.heatIndexC ?? null);
+  const temp = weather?.tempLabel ?? formatTempC(weather?.tempC ?? null);
+  if (heat != null && temp != null) {
+    return `Hi ${firstName}. I'm Tify, your personal AI companion for heat safety. Right now in Tuguegarao it's ${temp}°C (air) with a heat index of ${heat}°C — same as your Home dashboard.`;
+  }
+  if (heat != null) {
+    return `Hi ${firstName}. I'm Tify, your personal AI companion for heat safety. Current heat index is ${heat}°C (same as your Home dashboard).`;
+  }
   return `Hi ${firstName}. I'm Tify, your personal AI companion for heat safety.`;
 }
 
@@ -150,12 +160,12 @@ function buildSummary(draft: CheckInChatDraft): string {
 
 function greetingMessage(
   profile: UserProfile,
-  heatIndexC: number | null,
+  weather: LiveWeatherFacts | null,
   usesAi: boolean,
 ): CheckInChatMessage {
   const firstName = profile.name.split(' ')[0] || profile.name;
   const intro = usesAi
-    ? buildAiGreeting(profile, heatIndexC)
+    ? buildAiGreeting(profile, weather)
     : `Hi ${firstName}. I'm Tify, your personal AI companion for heat safety.`;
 
   return msg('assistant', intro);
@@ -346,14 +356,16 @@ function buildAiSystemPrompt(
   riskLevel: string | null,
   draft: CheckInChatDraft,
   userText: string,
+  weather: LiveWeatherFacts | null,
 ): string {
   return buildTifySystemPrompt({
     profile,
-    heatIndexC,
+    heatIndexC: weather?.heatIndexC ?? heatIndexC,
     riskLevel,
     draft,
     latestUserMessage: userText,
     symptomContext: buildSymptomContextForPrompt({ userText, profile }),
+    weather,
   });
 }
 
@@ -364,6 +376,7 @@ async function callCheckInAi(params: {
   draft: CheckInChatDraft;
   messages: CheckInChatMessage[];
   userText: string;
+  weather: LiveWeatherFacts | null;
 }): Promise<string | null> {
   const apiKey = appConfig.checkInAiApiKey;
   if (!apiKey) return null;
@@ -379,7 +392,7 @@ async function callCheckInAi(params: {
     },
     body: JSON.stringify({
       model,
-      temperature: 0.9,
+      temperature: 0.7,
       frequency_penalty: 0.4,
       presence_penalty: 0.3,
       max_tokens: 720,
@@ -392,6 +405,7 @@ async function callCheckInAi(params: {
             params.riskLevel,
             params.draft,
             params.userText,
+            params.weather,
           ),
         },
         ...params.messages.map((m) => ({ role: m.role, content: m.content })),
@@ -422,11 +436,24 @@ export const checkInChatService = {
   startConversation(
     profile: UserProfile,
     heatIndexC: number | null,
+    weather: LiveWeatherFacts | null = null,
   ): { messages: CheckInChatMessage[]; draft: CheckInChatDraft } {
     const usesAi = this.isAiConfigured();
     const draft: CheckInChatDraft = { step: usesAi ? 'greeting' : 'hydration' };
+    const facts =
+      weather ??
+      ({
+        tempC: null,
+        heatIndexC,
+        feelsLikeC: null,
+        humidity: null,
+        conditionText: null,
+        tempLabel: null,
+        heatIndexLabel: formatHeatIndexC(heatIndexC),
+        feelsLikeLabel: null,
+      } satisfies LiveWeatherFacts);
     return {
-      messages: [greetingMessage(profile, heatIndexC, usesAi)],
+      messages: [greetingMessage(profile, facts, usesAi)],
       draft,
     };
   },
@@ -438,9 +465,22 @@ export const checkInChatService = {
     draft: CheckInChatDraft;
     messages: CheckInChatMessage[];
     userText: string;
+    weather?: LiveWeatherFacts | null;
   }): Promise<CheckInChatTurnResult> {
     const userMessage = msg('user', params.userText.trim());
     const history = [...params.messages, userMessage];
+    const weather =
+      params.weather ??
+      ({
+        tempC: null,
+        heatIndexC: params.heatIndexC,
+        feelsLikeC: null,
+        humidity: null,
+        conditionText: null,
+        tempLabel: null,
+        heatIndexLabel: formatHeatIndexC(params.heatIndexC),
+        feelsLikeLabel: null,
+      } satisfies LiveWeatherFacts);
 
     const ctaParams = { userText: params.userText, riskLevel: params.riskLevel };
 
@@ -466,11 +506,12 @@ export const checkInChatService = {
       try {
         const aiContent = await callCheckInAi({
           profile: params.profile,
-          heatIndexC: params.heatIndexC,
+          heatIndexC: weather.heatIndexC ?? params.heatIndexC,
           riskLevel: params.riskLevel,
           draft: draftWithUser,
           messages: history,
           userText: params.userText,
+          weather,
         });
 
         if (aiContent) {
