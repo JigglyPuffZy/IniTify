@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.initify.app",
-      "versionCode": 4,
+      "versionCode": 5,
       "softwareKeyboardLayoutMode": "pan",
       "permissions": [
         "android.permission.POST_NOTIFICATIONS",
@@ -23,8 +23,8 @@
       ],
       "adaptiveIcon": {
         "backgroundColor": "#1E3A8A",
-        "foregroundImage": "./assets/images/initify-logo.png",
-        "monochromeImage": "./assets/images/initify-logo.png"
+        "foregroundImage": "./assets/images/icon.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
     },
@@ -40,7 +40,7 @@
         {
           "backgroundColor": "#1E3A8A",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200
+          "imageWidth": 220
         }
       ],
       [
