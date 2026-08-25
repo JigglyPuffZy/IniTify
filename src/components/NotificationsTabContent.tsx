@@ -1,16 +1,22 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Pressable,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { InAppNotification, InAppNotificationType } from '@/src/models/in-app-notification';
 import { PageMasthead, ScreenTopAccent } from '@/src/components/layout/PageMasthead';
+import {
+  notificationService,
+  type NotificationPermissionStatus,
+} from '@/src/services/notifications/notification.service';
+import { canUseNativeNotifications } from '@/src/services/notifications/notifications.constants';
 import { layout, radius, spacing, typography, fonts, cardShadow } from '@/src/theme';
 import { useAppTheme } from '@/src/theme/useAppTheme';
 import type { AppPalette } from '@/src/theme/palettes';
@@ -45,12 +51,55 @@ export function NotificationsTabContent({
   const styles = useMemo(() => createStyles(palette, isDark), [palette, isDark]);
   const shadow = useMemo(() => cardShadow(), []);
 
+  const [permission, setPermission] = useState<NotificationPermissionStatus>('undetermined');
+  const [busy, setBusy] = useState(false);
+  const [phoneMessage, setPhoneMessage] = useState<string | null>(null);
+  const nativeAvailable = canUseNativeNotifications();
+
   const unread = notifications.filter((n) => !n.read).length;
+
+  useEffect(() => {
+    void (async () => {
+      await notificationService.initialize();
+      setPermission(await notificationService.getPermissionStatus());
+    })();
+  }, []);
+
+  async function enablePhoneNotifications() {
+    setBusy(true);
+    try {
+      const result = await notificationService.requestPermission();
+      setPermission(await notificationService.getPermissionStatus());
+      setPhoneMessage(result.message);
+      if (!result.data && result.status === 'denied') {
+        // If Android won't show the prompt again, send user to Settings.
+        const status = await notificationService.getPermissionStatus();
+        if (status === 'denied') {
+          await notificationService.openSystemNotificationSettings();
+        }
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sendTest() {
+    setBusy(true);
+    try {
+      const result = await notificationService.sendTestNotification(2);
+      setPermission(await notificationService.getPermissionStatus());
+      setPhoneMessage(result.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   function openNotification(item: InAppNotification) {
     if (!item.read) onMarkRead(item.id);
     if (item.href) router.push(item.href as never);
   }
+
+  const phoneEnabled = permission === 'granted';
 
   return (
     <View style={styles.root}>
@@ -67,8 +116,84 @@ export function NotificationsTabContent({
           <PageMasthead
             overline="IniTify"
             title="Notifications"
-            subtitle="Heat, check-in, and emergency alerts — also sent to your phone notifications."
+            subtitle="Heat, check-in, and emergency alerts — also sent to your phone."
           />
+
+          <View style={[styles.phoneCard, shadow]}>
+            <View style={styles.phoneHead}>
+              <View style={styles.phoneIcon}>
+                <Ionicons
+                  name={phoneEnabled ? 'notifications' : 'notifications-off-outline'}
+                  size={22}
+                  color={palette.primary}
+                />
+              </View>
+              <View style={styles.phoneTextWrap}>
+                <Text style={styles.phoneTitle}>
+                  {phoneEnabled ? 'Phone notifications on' : 'Enable phone notifications'}
+                </Text>
+                <Text style={styles.phoneBody}>
+                  {!nativeAvailable
+                    ? 'Install the release APK to use the phone notification shade.'
+                    : phoneEnabled
+                      ? 'Heat alerts and reminders will appear in your notification shade.'
+                      : 'Tap Allow when Android asks, or open Settings if the prompt does not show.'}
+                </Text>
+              </View>
+            </View>
+
+            {nativeAvailable ? (
+              <View style={styles.phoneActions}>
+                {!phoneEnabled ? (
+                  <Pressable
+                    onPress={() => void enablePhoneNotifications()}
+                    disabled={busy}
+                    style={({ pressed }) => [
+                      styles.phonePrimaryBtn,
+                      pressed && styles.pressed,
+                      busy && styles.disabled,
+                    ]}
+                  >
+                    {busy ? (
+                      <ActivityIndicator color="#FFF" />
+                    ) : (
+                      <>
+                        <Ionicons name="shield-checkmark-outline" size={16} color="#FFF" />
+                        <Text style={styles.phonePrimaryText}>Allow notifications</Text>
+                      </>
+                    )}
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    onPress={() => void sendTest()}
+                    disabled={busy}
+                    style={({ pressed }) => [
+                      styles.phonePrimaryBtn,
+                      pressed && styles.pressed,
+                      busy && styles.disabled,
+                    ]}
+                  >
+                    {busy ? (
+                      <ActivityIndicator color="#FFF" />
+                    ) : (
+                      <>
+                        <Ionicons name="flash-outline" size={16} color="#FFF" />
+                        <Text style={styles.phonePrimaryText}>Send test notification</Text>
+                      </>
+                    )}
+                  </Pressable>
+                )}
+                <Pressable
+                  onPress={() => void notificationService.openSystemNotificationSettings()}
+                  style={({ pressed }) => [styles.phoneGhostBtn, pressed && styles.pressed]}
+                >
+                  <Text style={styles.phoneGhostText}>Open phone Settings</Text>
+                </Pressable>
+              </View>
+            ) : null}
+
+            {phoneMessage ? <Text style={styles.phoneMessage}>{phoneMessage}</Text> : null}
+          </View>
 
           {unread > 0 ? (
             <Pressable
@@ -152,6 +277,65 @@ function createStyles(p: AppPalette, isDark: boolean) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: p.background },
     scrollContent: { flexGrow: 1 },
+    phoneCard: {
+      backgroundColor: p.surface,
+      borderRadius: radius.xl,
+      borderWidth: 1,
+      borderColor: p.primary,
+      padding: spacing.lg,
+      marginBottom: spacing.xl,
+      gap: spacing.md,
+    },
+    phoneHead: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
+    phoneIcon: {
+      width: 42,
+      height: 42,
+      borderRadius: radius.md,
+      backgroundColor: p.primarySoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    phoneTextWrap: { flex: 1, minWidth: 0, gap: 4 },
+    phoneTitle: {
+      fontFamily: fonts.headerSemi,
+      fontSize: 16,
+      color: p.text,
+    },
+    phoneBody: {
+      ...typography.bodySm,
+      color: p.textMuted,
+      lineHeight: 20,
+    },
+    phoneActions: { gap: spacing.sm },
+    phonePrimaryBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      backgroundColor: p.primary,
+      borderRadius: radius.lg,
+      minHeight: 48,
+      paddingHorizontal: spacing.lg,
+    },
+    phonePrimaryText: {
+      fontFamily: fonts.bodySemiBold,
+      fontSize: 15,
+      color: '#FFFFFF',
+    },
+    phoneGhostBtn: {
+      alignItems: 'center',
+      paddingVertical: spacing.sm,
+    },
+    phoneGhostText: {
+      fontFamily: fonts.bodySemiBold,
+      fontSize: 14,
+      color: p.primary,
+    },
+    phoneMessage: {
+      ...typography.caption,
+      color: p.textSecondary,
+    },
+    disabled: { opacity: 0.7 },
     markAllBtn: {
       alignSelf: 'flex-end',
       marginBottom: spacing.md,

@@ -25,7 +25,9 @@ export function NotificationReminderHandler() {
     let removeResponse: (() => void) | null = null;
 
     void (async () => {
+      // Create channels first; delay briefly so the UI is ready before Android prompt.
       await notificationService.initialize();
+      await new Promise((resolve) => setTimeout(resolve, 800));
       await notificationService.requestPermission();
 
       removeReceived = await notificationService.addNotificationReceivedListener(async (data) => {

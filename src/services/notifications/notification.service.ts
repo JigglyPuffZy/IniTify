@@ -1,3 +1,4 @@
+import { Linking, PermissionsAndroid, Platform } from 'react-native';
 import type { HeatRiskLevel } from '@/src/models/risk';
 import type { ServiceResult } from '@/src/models/service-result';
 import {
@@ -10,23 +11,80 @@ import { CHECK_IN_NOTIFICATION_TYPE } from '@/src/services/check-in/reminder-sch
 
 export type NotificationPermissionStatus = 'granted' | 'denied' | 'undetermined' | 'unavailable';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ExpoNotifications = any;
+
 function unavailableMessage(): string {
   return canUseNativeNotifications()
-    ? 'Phone notifications could not start. Check notification permission in system Settings.'
+    ? 'Phone notifications could not start. Check Settings → Apps → IniTify → Notifications.'
     : 'Phone notifications need the release APK (not Expo Go). Alerts still appear in the Notifications tab.';
 }
 
-async function getNative() {
+async function getNative(): Promise<ExpoNotifications | null> {
   if (!canUseNativeNotifications()) return null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mod = require('@/src/services/notifications/notifications.native') as {
-      getNotificationsModule: () => Promise<unknown>;
+      getNotificationsModule: () => Promise<ExpoNotifications | null>;
     };
     return mod.getNotificationsModule();
   } catch {
     return null;
   }
+}
+
+/** Android 13+ needs POST_NOTIFICATIONS; channels must exist before the system prompt. */
+async function ensureAndroidPostNotificationsPermission(): Promise<boolean> {
+  if (Platform.OS !== 'android' || Platform.Version < 33) return true;
+  try {
+    const already = await PermissionsAndroid.check(
+      PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+    );
+    if (already) return true;
+    const result = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+      {
+        title: 'Allow IniTify notifications',
+        message:
+          'IniTify needs notification permission to show heat alerts, check-in reminders, and emergencies on your phone.',
+        buttonPositive: 'Allow',
+        buttonNegative: 'Not now',
+      },
+    );
+    return result === PermissionsAndroid.RESULTS.GRANTED;
+  } catch {
+    return false;
+  }
+}
+
+async function ensurePermission(N: ExpoNotifications): Promise<{
+  granted: boolean;
+  canAskAgain: boolean;
+  status: NotificationPermissionStatus;
+}> {
+  // Android 13: create channels BEFORE requesting, or the OS prompt never appears.
+  await ensureAndroidPostNotificationsPermission();
+
+  const current = await N.getPermissionsAsync();
+  if (current.status === 'granted' || current.granted === true) {
+    return { granted: true, canAskAgain: true, status: 'granted' };
+  }
+
+  const requested = await N.requestPermissionsAsync({
+    ios: {
+      allowAlert: true,
+      allowBadge: true,
+      allowSound: true,
+    },
+  });
+
+  const granted = requested.status === 'granted' || requested.granted === true;
+  const canAskAgain = requested.canAskAgain !== false;
+  return {
+    granted,
+    canAskAgain,
+    status: granted ? 'granted' : 'denied',
+  };
 }
 
 async function presentImmediate(params: {
@@ -41,16 +99,15 @@ async function presentImmediate(params: {
     return { status: 'unavailable', data: null, message: unavailableMessage() };
   }
 
-  const permission = await N.getPermissionsAsync();
-  if (permission.status !== 'granted') {
-    const requested = await N.requestPermissionsAsync();
-    if (requested.status !== 'granted') {
-      return {
-        status: 'denied',
-        data: null,
-        message: 'Notification permission denied. Enable it in phone Settings → Apps → IniTify.',
-      };
-    }
+  const permission = await ensurePermission(N);
+  if (!permission.granted) {
+    return {
+      status: 'denied',
+      data: null,
+      message: permission.canAskAgain
+        ? 'Notification permission not granted yet. Tap Enable phone notifications.'
+        : 'Notifications are blocked. Open phone Settings → Apps → IniTify → Notifications and turn them on.',
+    };
   }
 
   const priority =
@@ -88,17 +145,22 @@ async function presentImmediate(params: {
 
 export const notificationService = {
   async initialize(): Promise<void> {
-    const N = await getNative();
-    if (!N) return;
-    await N.getPermissionsAsync();
+    // Creates Android channels so later permission prompts can appear.
+    await getNative();
   },
 
   async getPermissionStatus(): Promise<NotificationPermissionStatus> {
     const N = await getNative();
     if (!N) return 'unavailable';
     try {
-      const { status } = await N.getPermissionsAsync();
-      if (status === 'granted') return 'granted';
+      if (Platform.OS === 'android' && Platform.Version >= 33) {
+        const nativeGranted = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+        );
+        if (!nativeGranted) return 'denied';
+      }
+      const { status, granted } = await N.getPermissionsAsync();
+      if (status === 'granted' || granted === true) return 'granted';
       if (status === 'denied') return 'denied';
       return 'undetermined';
     } catch {
@@ -112,25 +174,32 @@ export const notificationService = {
       return { status: 'unavailable', data: false, message: unavailableMessage() };
     }
     try {
-      const current = await N.getPermissionsAsync();
-      if (current.status === 'granted') {
-        return { status: 'success', data: true, message: 'Notifications already enabled.' };
+      const result = await ensurePermission(N);
+      if (result.granted) {
+        return { status: 'success', data: true, message: 'Phone notifications enabled.' };
       }
-      const requested = await N.requestPermissionsAsync();
-      const granted = requested.status === 'granted';
       return {
-        status: granted ? 'success' : 'denied',
-        data: granted,
-        message: granted
-          ? 'Phone notifications enabled.'
-          : 'Notification permission denied. Enable it in phone Settings.',
+        status: 'denied',
+        data: false,
+        message: result.canAskAgain
+          ? 'Permission not granted. Tap Allow when Android asks.'
+          : 'Notifications blocked. Open Settings to enable them for IniTify.',
       };
     } catch (error) {
       return {
         status: 'error',
         data: false,
-        message: error instanceof Error ? error.message : 'Could not request notification permission.',
+        message:
+          error instanceof Error ? error.message : 'Could not request notification permission.',
       };
+    }
+  },
+
+  async openSystemNotificationSettings(): Promise<void> {
+    try {
+      await Linking.openSettings();
+    } catch {
+      /* ignore */
     }
   },
 
@@ -227,7 +296,7 @@ export const notificationService = {
     });
   },
 
-  async sendTestNotification(delaySeconds = 5): Promise<ServiceResult<string>> {
+  async sendTestNotification(delaySeconds = 2): Promise<ServiceResult<string>> {
     const N = await getNative();
     if (!N) {
       return { status: 'unavailable', data: null, message: unavailableMessage() };
@@ -240,7 +309,7 @@ export const notificationService = {
       const id = await N.scheduleNotificationAsync({
         content: {
           title: 'IniTify test',
-          body: 'Phone notifications are working.',
+          body: 'Phone notifications are working. You will see heat and check-in alerts here.',
           data: { type: 'system' },
           sound: true,
           channelId: CHECK_IN_CHANNEL_ID,
@@ -257,7 +326,10 @@ export const notificationService = {
       return {
         status: 'success',
         data: id,
-        message: delaySeconds > 0 ? `Test notification in ${delaySeconds}s.` : 'Test sent.',
+        message:
+          delaySeconds > 0
+            ? `Test notification in ${delaySeconds}s — check your notification shade.`
+            : 'Test notification sent.',
       };
     } catch (error) {
       return {
@@ -285,11 +357,11 @@ export const notificationService = {
   ): Promise<(() => void) | null> {
     const N = await getNative();
     if (!N) return null;
-    const sub = N.addNotificationReceivedListener((notification: {
-      request?: { content?: { data?: Record<string, unknown> } };
-    }) => {
-      onReceived(notification.request?.content?.data ?? {});
-    });
+    const sub = N.addNotificationReceivedListener(
+      (notification: { request?: { content?: { data?: Record<string, unknown> } } }) => {
+        onReceived(notification.request?.content?.data ?? {});
+      },
+    );
     return () => sub.remove();
   },
 
@@ -298,11 +370,13 @@ export const notificationService = {
   ): Promise<(() => void) | null> {
     const N = await getNative();
     if (!N) return null;
-    const sub = N.addNotificationResponseReceivedListener((response: {
-      notification?: { request?: { content?: { data?: Record<string, unknown> } } };
-    }) => {
-      onResponse(response.notification?.request?.content?.data ?? {});
-    });
+    const sub = N.addNotificationResponseReceivedListener(
+      (response: {
+        notification?: { request?: { content?: { data?: Record<string, unknown> } } };
+      }) => {
+        onResponse(response.notification?.request?.content?.data ?? {});
+      },
+    );
     return () => sub.remove();
   },
 };
