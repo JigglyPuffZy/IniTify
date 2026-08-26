@@ -8,6 +8,11 @@ import type { CheckInChatDraft } from '@/src/models/check-in-chat';
 import { formatConditionLabel, getActiveHealthConditions } from '@/src/constants/health-conditions';
 import type { LiveWeatherFacts } from '@/src/utils/live-heat';
 import {
+  CUP_ML,
+  HYDRATION_VOLUME_THRESHOLDS,
+  WATER_INTAKE_QUICK_REPLIES,
+} from '@/src/utils/hydration-volume';
+import {
   conditionHeatReminder,
   riskLevelGuidance,
   TIFY_ALLOWED_TOPICS,
@@ -99,6 +104,12 @@ If off-topic, briefly redirect in your own words — invent a fresh redirect eac
 3. Give practical steps tailored to THEIR symptoms and conditions — not a generic list.
 4. If urgent (chest pain, cannot breathe, fainting, confusion, unconscious): urgently urge 911 / local emergency help in your own words, tailored to what they described. Mention they can tap **Nearest hospital** below (do not invent hospital names or distances — the app shows those).
 5. Naturally collect missing check-in fields (hydration → activity → feeling → notes) without sounding like a checklist.
+   - For hydration: ask HOW MUCH water they drank today (cups or liters), not just "well hydrated?"
+   - Classify using IniTify thresholds (1 cup = ${CUP_ML} ml):
+     • Well Hydrated: ≥ ${HYDRATION_VOLUME_THRESHOLDS.wellHydratedMinLiters} L (≥ 8 cups)
+     • Needs Hydration (moderate): ${HYDRATION_VOLUME_THRESHOLDS.moderateMinLiters}–${HYDRATION_VOLUME_THRESHOLDS.wellHydratedMinLiters - 0.01} L (4–7 cups)
+     • Dehydrated / Concerning: < ${HYDRATION_VOLUME_THRESHOLDS.moderateMinLiters} L (< 4 cups)
+   - Tell the user the amount you parsed AND the classification in plain language.
 6. ${TIFY_DISCLAIMER} — weave in briefly when giving health guidance, not as a footer every time.
 
 ## User: ${profile.name} (age ${age})
@@ -118,6 +129,7 @@ generalStatus: ${GENERAL_STATUSES.join(' | ')}
 ${JSON.stringify(
   {
     hydrationStatus: draft.hydrationStatus ?? null,
+    waterIntakeLiters: draft.waterIntakeLiters ?? null,
     activityLevel: draft.activityLevel ?? null,
     generalStatus: draft.generalStatus ?? null,
     notes: draft.notes ?? null,
@@ -144,7 +156,7 @@ export function tifyQuickRepliesForDraft(
   }
   if (draft.step === 'done') return ['Save check-in'];
   if (!draft.hydrationStatus) {
-    return ['Well Hydrated', 'Needs Hydration', 'Dehydrated / Concerning'];
+    return [...WATER_INTAKE_QUICK_REPLIES];
   }
   if (!draft.activityLevel) return ['Low', 'Moderate', 'High'];
   if (!draft.generalStatus) return ['Feeling Well', 'Mild Discomfort', 'Not Feeling Well'];

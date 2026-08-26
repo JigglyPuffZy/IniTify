@@ -21,6 +21,8 @@ export type CheckInChatStep =
 export interface CheckInChatDraft {
   step: CheckInChatStep;
   hydrationStatus?: HydrationStatus;
+  /** Reported fluid intake today (liters), when user gives cups/ml/L. */
+  waterIntakeLiters?: number;
   activityLevel?: ActivityLevel;
   generalStatus?: GeneralStatus;
   notes?: string;

@@ -49,7 +49,7 @@ export function getOffTopicRedirect(draft: CheckInChatDraft): string {
     return (
       "Medyo labas 'yan sa scope ko — ako si Tify, heat-safety assistant mo sa IniTify lang. " +
       'Hindi ako general chatbot. Focus tayo sa check-in mo ngayon.\n\n' +
-      'Una: Kumusta hydration mo? Well hydrated, needs water, o dehydrated?'
+      'Una: Ilang tubig na ang nainom mo today? (cups o liters — hal. 4 cups o 1 L)'
     );
   }
   if (!draft.activityLevel) {
@@ -107,20 +107,20 @@ export function riskLevelGuidance(
   const level = risk as HeatRiskLevel | null;
   if (level === 'EXTREME' || (heatIndexC != null && heatIndexC >= 42)) {
     return (
-      'Extreme heat risk — limitahan ang labas, uminom ng tubig, mag-rest sa pinaka-cool na lugar. ' +
-      'Kung may sintomas (pagkahilo, kalituhan), tumawag sa emergency hotline.'
+      'Extreme heat risk — limit outdoor time to ≤15–20 min bursts, drink 250–500 ml water in the next 15–20 min (unless fluid-restricted), ' +
+      'rest in the coolest place available. Kung may sintomas (pagkahilo, kalituhan), tumawag sa emergency hotline.'
     );
   }
   if (level === 'HIGH' || (heatIndexC != null && heatIndexC >= 33)) {
     return (
-      'High heat risk — uminom ng tubig, mag-break sa shade, iwasan heavy activity sa tanghali. ' +
-      'Tingnan ang Safety Tips sa app para sa condition mo.'
+      'High heat risk — uminom ng ~250 ml every 15–20 min sa init, mag-5–10 min break sa shade every 30–45 min, ' +
+      'limit continuous outdoor work to ≤20–30 min. Tingnan ang Safety Tips sa app para sa condition mo.'
     );
   }
   if (level === 'MODERATE' || (heatIndexC != null && heatIndexC >= 27)) {
-    return 'Moderate heat — stay hydrated at magpahinga kung nanghihina ka sa init.';
+    return 'Moderate heat — aim for ≥2 L total fluids on hot days; rest 5–10 min every 30–45 min outdoors.';
   }
-  return 'Lower heat risk ngayon — hydrated pa rin at mag-check-in regularly.';
+  return 'Lower heat risk ngayon — still aim for ~250 ml every 1–2 hours outdoors and mag-check-in regularly.';
 }
 
 export const TIFY_EMERGENCY_SCRIPT =

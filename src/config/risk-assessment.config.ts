@@ -104,12 +104,12 @@ export const riskAssessmentConfig: RiskAssessmentConfig = {
     minHealthSeverityForAgeOverride: 3,
   },
   recommendations: {
-    LOW: 'Conditions look favorable. Stay hydrated and monitor how you feel if you go outdoors.',
+    LOW: 'Conditions look favorable. Drink about 250 ml water every 1–2 hours outdoors and monitor how you feel.',
     MODERATE:
-      'Take regular breaks, drink water, and limit prolonged sun exposure — especially if you have health conditions.',
+      'Take a 5–10 min rest every 30–45 min outdoors, drink ~250 ml every 15–20 min in the heat, and limit continuous sun exposure to under 30–45 minutes.',
     HIGH:
-      'Reduce outdoor exertion, seek shade or air-conditioning, hydrate often, and watch for dizziness or nausea.',
+      'Reduce outdoor exertion (≤20–30 continuous minutes). Seek shade/AC within 5 minutes if unwell. Hydrate ~250 ml every 15–20 min and watch for dizziness or nausea.',
     EXTREME:
-      'Avoid strenuous outdoor activity. Move to a cool place, hydrate immediately, and seek help if you feel unwell.',
+      'Avoid strenuous outdoor activity from ~10:00 AM–3:00 PM. Move to a cool place immediately, drink 250–500 ml water in the next 15–20 minutes (unless fluid-restricted), and seek help if you feel unwell.',
   },
 };

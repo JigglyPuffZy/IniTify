@@ -28,6 +28,12 @@ import {
 } from './tify-symptom-guide';
 import type { LiveWeatherFacts } from '@/src/utils/live-heat';
 import { formatHeatIndexC, formatTempC } from '@/src/utils/live-heat';
+import {
+  classifyHydrationFromText,
+  formatHydrationClassification,
+  WATER_INTAKE_QUICK_REPLIES,
+} from '@/src/utils/hydration-volume';
+import { logAiResponseTime } from '@/src/utils/network-latency-log';
 
 function withHospitalCta(
   result: CheckInChatTurnResult,
@@ -75,14 +81,32 @@ function matchOption<T extends string>(text: string, options: readonly T[]): T |
   return null;
 }
 
-function parseHydration(text: string): HydrationStatus | null {
+function parseHydration(text: string): {
+  status: HydrationStatus;
+  liters?: number;
+  classificationLine?: string;
+} | null {
+  const fromVolume = classifyHydrationFromText(text);
+  if (fromVolume) {
+    return {
+      status: fromVolume.status,
+      liters: fromVolume.intake.liters,
+      classificationLine: formatHydrationClassification(fromVolume.status, fromVolume.intake),
+    };
+  }
+
   const n = normalize(text);
   if (/(well|good|fine|okay|ok|hydrated)/.test(n) && !/dehydrat|thirst|need/.test(n)) {
-    return 'Well Hydrated';
+    return { status: 'Well Hydrated' };
   }
-  if (/(dehydrat|very thirsty|dizzy|dry mouth)/.test(n)) return 'Dehydrated / Concerning';
-  if (/(thirst|need water|not enough|little water)/.test(n)) return 'Needs Hydration';
-  return matchOption(text, HYDRATION_STATUSES);
+  if (/(dehydrat|very thirsty|dizzy|dry mouth)/.test(n)) {
+    return { status: 'Dehydrated / Concerning' };
+  }
+  if (/(thirst|need water|not enough|little water)/.test(n)) {
+    return { status: 'Needs Hydration' };
+  }
+  const matched = matchOption(text, HYDRATION_STATUSES);
+  return matched ? { status: matched } : null;
 }
 
 function parseActivity(text: string): ActivityLevel | null {
@@ -118,7 +142,11 @@ function mergeDraftFromUserText(draft: CheckInChatDraft, userText: string): Chec
   let notes = draft.notes;
   const isDescriptive =
     symptoms.length > 0 ||
-    (text.length > 12 && !hydration && !activity && !feeling && !/^(low|moderate|high)$/i.test(text));
+    (text.length > 12 &&
+      !hydration &&
+      !activity &&
+      !feeling &&
+      !/^(low|moderate|high)$/i.test(text));
 
   if (isDescriptive) {
     notes = notes ? `${notes}; ${text}` : text;
@@ -126,7 +154,9 @@ function mergeDraftFromUserText(draft: CheckInChatDraft, userText: string): Chec
 
   return {
     ...draft,
-    hydrationStatus: draft.hydrationStatus ?? hydration ?? inferHydrationFromSymptoms(symptoms),
+    hydrationStatus:
+      draft.hydrationStatus ?? hydration?.status ?? inferHydrationFromSymptoms(symptoms),
+    waterIntakeLiters: draft.waterIntakeLiters ?? hydration?.liters,
     activityLevel: draft.activityLevel ?? activity ?? undefined,
     generalStatus:
       draft.generalStatus ?? feeling ?? inferGeneralStatusFromSymptoms(symptoms) ?? undefined,
@@ -148,8 +178,12 @@ function buildAiGreeting(profile: UserProfile, weather: LiveWeatherFacts | null)
 }
 
 function buildSummary(draft: CheckInChatDraft): string {
+  const hydrationLine =
+    draft.waterIntakeLiters != null
+      ? `Hydration: ${draft.hydrationStatus ?? '—'} (${draft.waterIntakeLiters} L today)`
+      : `Hydration: ${draft.hydrationStatus ?? '—'}`;
   return [
-    `Hydration: ${draft.hydrationStatus ?? '—'}`,
+    hydrationLine,
     `Activity: ${draft.activityLevel ?? '—'}`,
     `How you feel: ${draft.generalStatus ?? '—'}`,
     draft.notes ? `Notes: ${draft.notes}` : null,
@@ -168,13 +202,15 @@ function greetingMessage(
     ? buildAiGreeting(profile, weather)
     : `Hi ${firstName}. I'm Tify, your personal AI companion for heat safety.`;
 
-  return msg('assistant', intro);
+  const waterPrompt =
+    '\n\nHow much water have you drunk so far today? Tell me in cups or liters (e.g. 4 cups or 1 L).';
+  return msg('assistant', intro + waterPrompt);
 }
 
 function stepQuickReplies(step: CheckInChatDraft['step']): string[] | undefined {
   switch (step) {
     case 'hydration':
-      return [...HYDRATION_STATUSES];
+      return [...WATER_INTAKE_QUICK_REPLIES];
     case 'activity':
       return [...ACTIVITY_LEVELS];
     case 'feeling':
@@ -197,7 +233,7 @@ function advanceScriptedTurn(userText: string, draft: CheckInChatDraft): CheckIn
       return {
         assistantMessage: msg(
           'assistant',
-          "No problem — let's start fresh. How's your hydration right now?",
+          "No problem — let's start fresh. How much water have you drunk so far today? (cups or liters)",
         ),
         draft: reset,
         quickReplies: stepQuickReplies('hydration'),
@@ -224,7 +260,7 @@ function advanceScriptedTurn(userText: string, draft: CheckInChatDraft): CheckIn
       return {
         assistantMessage: msg(
           'assistant',
-          "I didn't quite catch that. Are you well hydrated, needing water, or feeling dehydrated?",
+          "I didn't quite catch that. How much water have you had today? Example: 4 cups (1 L) or 2 liters.",
         ),
         draft: { ...draft, step: 'hydration' },
         quickReplies: stepQuickReplies('hydration'),
@@ -232,12 +268,20 @@ function advanceScriptedTurn(userText: string, draft: CheckInChatDraft): CheckIn
         usesAi: false,
       };
     }
+    const hydrationAck = hydration.classificationLine
+      ? hydration.classificationLine
+      : `Got it — ${hydration.status.toLowerCase()}.`;
     return {
       assistantMessage: msg(
         'assistant',
-        `Got it — ${hydration.toLowerCase()}.\n\nWhat activity level have you had today?`,
+        `${hydrationAck}\n\nWhat activity level have you had today?`,
       ),
-      draft: { ...draft, step: 'activity', hydrationStatus: hydration },
+      draft: {
+        ...draft,
+        step: 'activity',
+        hydrationStatus: hydration.status,
+        waterIntakeLiters: hydration.liters,
+      },
       quickReplies: stepQuickReplies('activity'),
       readyToSave: false,
       usesAi: false,
@@ -384,6 +428,7 @@ async function callCheckInAi(params: {
   const baseUrl = appConfig.checkInAiBaseUrl ?? 'https://api.openai.com/v1';
   const model = appConfig.checkInAiModel ?? 'gpt-4o-mini';
 
+  const startedAt = Date.now();
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
@@ -412,6 +457,12 @@ async function callCheckInAi(params: {
       ],
     }),
   });
+  logAiResponseTime({
+    endpoint: 'check-in-ai',
+    durationMs: Date.now() - startedAt,
+    ok: response.ok,
+    status: response.status,
+  });
 
   if (!response.ok) {
     const errText = await response.text();
@@ -430,7 +481,7 @@ export const checkInChatService = {
   },
 
   getStarterQuickReplies(): string[] {
-    return this.isAiConfigured() ? [] : ['Well hydrated', 'Needs water', 'Dehydrated'];
+    return [...WATER_INTAKE_QUICK_REPLIES];
   },
 
   startConversation(
