@@ -12,8 +12,10 @@ function clean(value: string | undefined): string | null {
 export const appConfig = {
   appName: 'IniTify',
 
-  hospitalDataProvider: clean(process.env.EXPO_PUBLIC_HOSPITAL_DATA_PROVIDER),
-  mapsProvider: clean(process.env.EXPO_PUBLIC_MAPS_PROVIDER),
+  /** Tuguegarao-only static list — default so APK never shows a blank hospital screen. */
+  hospitalDataProvider:
+    clean(process.env.EXPO_PUBLIC_HOSPITAL_DATA_PROVIDER) ?? 'static-tuguegarao',
+  mapsProvider: clean(process.env.EXPO_PUBLIC_MAPS_PROVIDER) ?? 'google',
 
   databaseProvider: clean(process.env.EXPO_PUBLIC_DATABASE_PROVIDER),
   mysqlApiUrl: clean(process.env.EXPO_PUBLIC_MYSQL_API_URL),

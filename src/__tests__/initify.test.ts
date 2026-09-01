@@ -18,6 +18,10 @@ import { recommendationService } from '@/src/services/recommendations/recommenda
 import { emergencyService } from '@/src/services/emergency/emergency.service';
 import { validateAge, isUserProfileComplete } from '@/src/utils/validation';
 import { TUGUEGARAO_STUDY_AREA } from '@/src/constants/study-area';
+import {
+  TUGUEGARAO_PAGASA_STATION,
+  defaultTuguegaraoWeatherCoords,
+} from '@/src/utils/tuguegarao-weather-location';
 
 jest.mock('@/src/services/environmental/open-meteo-client', () => ({
   fetchOpenMeteoCurrent: jest.fn(),
@@ -113,18 +117,19 @@ describe('environmental pipeline', () => {
     expect(status.configured).toBe(true);
   });
 
-  it('defaults heat fetch to Tuguegarao City when coordinates are omitted', async () => {
+  it('defaults heat fetch to PAGASA Tuguegarao station when coordinates are omitted', async () => {
     mockOpenMeteoWeather({ heatIndexC: 34 });
 
     const result = await environmentalService.fetchHeatIndex(null, null);
     expect(['success', 'cached', 'unavailable']).toContain(result.status);
+    const defaults = defaultTuguegaraoWeatherCoords();
     expect(mockedFetchOpenMeteo).toHaveBeenCalledWith(
-      TUGUEGARAO_STUDY_AREA.latitude,
-      TUGUEGARAO_STUDY_AREA.longitude,
+      defaults.latitude,
+      defaults.longitude,
     );
     if (result.status === 'success' && result.data) {
-      expect(result.data.latitude).toBe(TUGUEGARAO_STUDY_AREA.latitude);
-      expect(result.data.longitude).toBe(TUGUEGARAO_STUDY_AREA.longitude);
+      expect(result.data.latitude).toBe(TUGUEGARAO_PAGASA_STATION.latitude);
+      expect(result.data.longitude).toBe(TUGUEGARAO_PAGASA_STATION.longitude);
     }
   });
 });

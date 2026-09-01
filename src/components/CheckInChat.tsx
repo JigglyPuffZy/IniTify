@@ -22,6 +22,7 @@ import type { UserLocation } from '@/src/models/location';
 import type { CheckInChatDraft, CheckInChatMessage, CheckInChatStep } from '@/src/models/check-in-chat';
 import { checkInChatService } from '@/src/services/check-in/check-in-chat.service';
 import { hospitalService, type HospitalInfo } from '@/src/services/hospital/hospital.service';
+import { resolveHospitalSearchLocation } from '@/src/utils/hospital-location';
 import { BrandMark } from '@/src/components/auth/BrandMark';
 import { useAppTheme } from '@/src/theme/useAppTheme';
 import { cardShadow, fonts, layout, radius, spacing, typography } from '@/src/theme';
@@ -242,6 +243,8 @@ export function CheckInChat({
   const [usesAi, setUsesAi] = useState(false);
   const [showHospitalCta, setShowHospitalCta] = useState(false);
   const [nearestHospital, setNearestHospital] = useState<HospitalInfo | null>(null);
+  const [hospitalSearchLocation, setHospitalSearchLocation] = useState<UserLocation | null>(null);
+  const [hospitalUsesGps, setHospitalUsesGps] = useState(false);
   const [hospitalLoading, setHospitalLoading] = useState(false);
   const [hospitalStatus, setHospitalStatus] = useState<string | null>(null);
   const [openingMaps, setOpeningMaps] = useState(false);
@@ -299,24 +302,30 @@ export function CheckInChat({
   }, [scrollToEnd]);
 
   useEffect(() => {
-    if (!showHospitalCta || !location) {
-      if (showHospitalCta && !location) {
-        setNearestHospital(null);
-        setHospitalStatus('Turn on location to find the nearest hospital.');
-      }
-      return;
+    if (!showHospitalCta) return;
+
+    if (!location && onRequestLocation) {
+      void onRequestLocation();
     }
+
+    const { location: searchAt, isGps } = resolveHospitalSearchLocation(location);
+    setHospitalSearchLocation(searchAt);
+    setHospitalUsesGps(isGps);
 
     let cancelled = false;
     setHospitalLoading(true);
-    setHospitalStatus(null);
+    setHospitalStatus(
+      isGps ? null : 'Using Tuguegarao city center — enable GPS for your exact nearest hospital.',
+    );
 
-    void hospitalService.findNearest(location).then((result) => {
+    void hospitalService.findNearest(searchAt).then((result) => {
       if (cancelled) return;
       setHospitalLoading(false);
       if (result.status === 'success' && result.data) {
         setNearestHospital(result.data);
-        setHospitalStatus(null);
+        if (isGps) {
+          setHospitalStatus(null);
+        }
       } else {
         setNearestHospital(null);
         setHospitalStatus(result.message || 'Could not find a nearby hospital.');
@@ -326,7 +335,7 @@ export function CheckInChat({
     return () => {
       cancelled = true;
     };
-  }, [showHospitalCta, location]);
+  }, [showHospitalCta, location, onRequestLocation]);
 
   const handleRequestLocation = useCallback(async () => {
     if (!onRequestLocation || requestingLocation) return;
@@ -339,17 +348,18 @@ export function CheckInChat({
   }, [onRequestLocation, requestingLocation]);
 
   const handleOpenNearestHospital = useCallback(async () => {
-    if (!location || !nearestHospital || openingMaps) return;
+    const origin = hospitalSearchLocation ?? resolveHospitalSearchLocation(location).location;
+    if (!nearestHospital || openingMaps) return;
     setOpeningMaps(true);
     try {
-      const result = await hospitalService.openNavigation(nearestHospital, location);
+      const result = await hospitalService.openNavigation(nearestHospital, origin);
       if (result.status !== 'success') {
         setHospitalStatus(result.message || 'Could not open maps.');
       }
     } finally {
       setOpeningMaps(false);
     }
-  }, [location, nearestHospital, openingMaps]);
+  }, [hospitalSearchLocation, location, nearestHospital, openingMaps]);
 
   const saveCheckIn = useCallback(
     async (saveDraft: CheckInChatDraft, transcript: CheckInChatMessage[]) => {
@@ -550,29 +560,10 @@ export function CheckInChat({
 
           {showHospitalCta && !keyboardVisible ? (
             <View style={styles.hospitalCtaWrap}>
-              <Text style={styles.hospitalCtaHint}>Need care nearby?</Text>
-              {!location ? (
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.hospitalCta,
-                    styles.hospitalCtaMuted,
-                    pressed && styles.pressed,
-                  ]}
-                  onPress={() => void handleRequestLocation()}
-                  disabled={requestingLocation || !onRequestLocation}
-                  accessibilityRole="button"
-                  accessibilityLabel="Enable location for nearest hospital"
-                >
-                  {requestingLocation ? (
-                    <ActivityIndicator color={palette.primary} />
-                  ) : (
-                    <>
-                      <Ionicons name="location-outline" size={18} color={palette.primary} />
-                      <Text style={styles.hospitalCtaTitle}>Enable location</Text>
-                    </>
-                  )}
-                </Pressable>
-              ) : hospitalLoading ? (
+              <Text style={styles.hospitalCtaHint}>
+                {hospitalUsesGps ? 'Nearest hospital in Tuguegarao' : 'Nearest hospital (enable GPS for accuracy)'}
+              </Text>
+              {hospitalLoading ? (
                 <View style={[styles.hospitalCta, styles.hospitalCtaMuted]}>
                   <ActivityIndicator color={palette.primary} />
                 </View>
@@ -616,6 +607,27 @@ export function CheckInChat({
                   </Text>
                 </View>
               )}
+              {!hospitalUsesGps && onRequestLocation ? (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.hospitalGpsLink,
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => void handleRequestLocation()}
+                  disabled={requestingLocation}
+                  accessibilityRole="button"
+                  accessibilityLabel="Enable GPS for nearest hospital"
+                >
+                  {requestingLocation ? (
+                    <ActivityIndicator color={palette.primary} size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="location-outline" size={16} color={palette.primary} />
+                      <Text style={styles.hospitalGpsLinkText}>Use my GPS location</Text>
+                    </>
+                  )}
+                </Pressable>
+              ) : null}
             </View>
           ) : null}
 
@@ -1025,6 +1037,19 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number) {
       ...typography.caption,
       color: 'rgba(255,255,255,0.9)',
       lineHeight: 18,
+    },
+    hospitalGpsLink: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.xs,
+      marginTop: spacing.sm,
+      paddingVertical: spacing.sm,
+    },
+    hospitalGpsLinkText: {
+      fontFamily: fonts.bodySemiBold,
+      fontSize: 13,
+      color: p.primary,
     },
     composer: {
       flexDirection: 'row',

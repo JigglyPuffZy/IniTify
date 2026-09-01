@@ -1,6 +1,6 @@
 import { computeHeatIndexFromTempHumidity } from './pagasa/heat-index-calculator';
 import type { CurrentWeatherSnapshot } from '@/src/models/weather';
-import { TUGUEGARAO_STUDY_AREA } from '@/src/constants/study-area';
+import { TUGUEGARAO_WEATHER_LABEL } from '@/src/utils/tuguegarao-weather-location';
 
 /** Open-Meteo forecast current-weather response (subset). */
 interface OpenMeteoCurrentResponse {
@@ -94,7 +94,7 @@ function resolveHeatIndexC(params: {
   return Math.round(params.tempC * 10) / 10;
 }
 
-function buildForecastUrl(latitude: number, longitude: number): string {
+function buildForecastUrl(latitude: number, longitude: number, models?: string): string {
   const params = new URLSearchParams({
     latitude: String(latitude),
     longitude: String(longitude),
@@ -110,7 +110,10 @@ function buildForecastUrl(latitude: number, longitude: number): string {
     ].join(','),
     wind_speed_unit: 'kmh',
     timezone: 'Asia/Manila',
+    // Prefer land grid cell (station area) over water interpolation.
+    cell_selection: 'land',
   });
+  if (models) params.set('models', models);
   return `https://api.open-meteo.com/v1/forecast?${params.toString()}`;
 }
 
@@ -131,78 +134,93 @@ async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Respons
   }
 }
 
+function parseOpenMeteoResponse(json: OpenMeteoCurrentResponse): CurrentWeatherSnapshot | null {
+  const current = json.current;
+  if (current?.temperature_2m != null && !Number.isNaN(current.temperature_2m)) {
+    const tempC = current.temperature_2m;
+    const humidity = current.relative_humidity_2m ?? null;
+    const apparentC = current.apparent_temperature ?? null;
+    const heatIndexC = resolveHeatIndexC({ tempC, humidity, apparentC });
+    const feelsLikeC = apparentC ?? heatIndexC;
+
+    return {
+      locationName: TUGUEGARAO_WEATHER_LABEL,
+      tempC: Math.round(tempC * 10) / 10,
+      feelsLikeC: Math.round(feelsLikeC * 10) / 10,
+      heatIndexC,
+      humidity: humidity ?? 0,
+      conditionText: weatherCodeToText(current.weather_code),
+      conditionIconUrl: '',
+      windKph: Math.round((current.wind_speed_10m ?? 0) * 10) / 10,
+      windDir: degreesToCompass(current.wind_direction_10m),
+      isDay: current.is_day === 1,
+      lastUpdated: current.time ?? new Date().toISOString(),
+      source: 'open-meteo',
+    };
+  }
+
+  const legacy = json.current_weather;
+  if (legacy?.temperature != null && !Number.isNaN(legacy.temperature)) {
+    const tempC = legacy.temperature;
+    const heatIndexC = resolveHeatIndexC({ tempC, humidity: null, apparentC: null });
+    return {
+      locationName: TUGUEGARAO_WEATHER_LABEL,
+      tempC: Math.round(tempC * 10) / 10,
+      feelsLikeC: heatIndexC,
+      heatIndexC,
+      humidity: 0,
+      conditionText: weatherCodeToText(legacy.weathercode),
+      conditionIconUrl: '',
+      windKph: Math.round((legacy.windspeed ?? 0) * 10) / 10,
+      windDir: degreesToCompass(legacy.winddirection),
+      isDay: legacy.is_day === 1,
+      lastUpdated: legacy.time ?? new Date().toISOString(),
+      source: 'open-meteo',
+    };
+  }
+
+  return null;
+}
+
+async function fetchOpenMeteoOnce(url: string): Promise<CurrentWeatherSnapshot | null> {
+  const response = await fetchWithTimeout(url, 12_000);
+  const json = (await response.json()) as OpenMeteoCurrentResponse;
+
+  if (!response.ok || json.error) {
+    throw new Error(json.reason ?? `Open-Meteo error (${response.status})`);
+  }
+
+  return parseOpenMeteoResponse(json);
+}
+
 /**
  * Live current weather for Tuguegarao via Open-Meteo (no API key required).
- * Retries once on transient network failures. Always requests fresh current data.
+ * Uses best-match model first, then GFS seamless as fallback for the Philippines.
  * @see https://open-meteo.com/en/docs
  */
 export async function fetchOpenMeteoCurrent(
   latitude: number,
   longitude: number,
 ): Promise<CurrentWeatherSnapshot> {
-  // Cache-bust so auto/manual refresh always hits live Open-Meteo current conditions
-  const url = `${buildForecastUrl(latitude, longitude)}&_t=${Date.now()}`;
+  const cacheBust = `_t=${Date.now()}`;
+  const attempts = [
+    buildForecastUrl(latitude, longitude),
+    buildForecastUrl(latitude, longitude, 'gfs_seamless'),
+  ];
+
   let lastError: unknown;
 
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const response = await fetchWithTimeout(url, 12_000);
-      const json = (await response.json()) as OpenMeteoCurrentResponse;
-
-      if (!response.ok || json.error) {
-        throw new Error(json.reason ?? `Open-Meteo error (${response.status})`);
-      }
-
-      const current = json.current;
-      if (current?.temperature_2m != null && !Number.isNaN(current.temperature_2m)) {
-        const tempC = current.temperature_2m;
-        const humidity = current.relative_humidity_2m ?? null;
-        const apparentC = current.apparent_temperature ?? null;
-        const heatIndexC = resolveHeatIndexC({ tempC, humidity, apparentC });
-        const feelsLikeC = apparentC ?? heatIndexC;
-
-        return {
-          locationName: TUGUEGARAO_STUDY_AREA.city,
-          tempC: Math.round(tempC * 10) / 10,
-          feelsLikeC: Math.round(feelsLikeC * 10) / 10,
-          heatIndexC,
-          humidity: humidity ?? 0,
-          conditionText: weatherCodeToText(current.weather_code),
-          conditionIconUrl: '',
-          windKph: Math.round((current.wind_speed_10m ?? 0) * 10) / 10,
-          windDir: degreesToCompass(current.wind_direction_10m),
-          isDay: current.is_day === 1,
-          lastUpdated: current.time ?? new Date().toISOString(),
-          source: 'open-meteo',
-        };
-      }
-
-      // Legacy current_weather shape (no humidity — use apparent/temp for heat feel)
-      const legacy = json.current_weather;
-      if (legacy?.temperature != null && !Number.isNaN(legacy.temperature)) {
-        const tempC = legacy.temperature;
-        const heatIndexC = resolveHeatIndexC({ tempC, humidity: null, apparentC: null });
-        return {
-          locationName: TUGUEGARAO_STUDY_AREA.city,
-          tempC: Math.round(tempC * 10) / 10,
-          feelsLikeC: heatIndexC,
-          heatIndexC,
-          humidity: 0,
-          conditionText: weatherCodeToText(legacy.weathercode),
-          conditionIconUrl: '',
-          windKph: Math.round((legacy.windspeed ?? 0) * 10) / 10,
-          windDir: degreesToCompass(legacy.winddirection),
-          isDay: legacy.is_day === 1,
-          lastUpdated: legacy.time ?? new Date().toISOString(),
-          source: 'open-meteo',
-        };
-      }
-
-      throw new Error('Open-Meteo returned no current conditions.');
-    } catch (error) {
-      lastError = error;
-      if (attempt === 0) {
-        await new Promise((r) => setTimeout(r, 600));
+  for (const baseUrl of attempts) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const snapshot = await fetchOpenMeteoOnce(`${baseUrl}&${cacheBust}`);
+        if (snapshot) return snapshot;
+        throw new Error('Open-Meteo returned no current conditions.');
+      } catch (error) {
+        lastError = error;
+        if (attempt === 0) {
+          await new Promise((r) => setTimeout(r, 600));
+        }
       }
     }
   }

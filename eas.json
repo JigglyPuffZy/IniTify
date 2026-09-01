@@ -20,9 +20,8 @@
     },
     "production": {
       "environment": "production",
-      "distribution": "internal",
       "android": {
-        "buildType": "apk"
+        "buildType": "app-bundle"
       },
       "env": {
         "EXPO_PUBLIC_DATABASE_PROVIDER": "supabase",

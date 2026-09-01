@@ -11,18 +11,14 @@ import { hospitalService, type HospitalInfo } from '@/src/services/hospital/hosp
 import { locationService } from '@/src/services/location/location.service';
 import { databaseService } from '@/src/services/database/database.service';
 import { TUGUEGARAO_STUDY_AREA } from '@/src/constants/study-area';
+import { resolveHospitalSearchLocation } from '@/src/utils/hospital-location';
 import { useResponsive } from '@/src/utils/responsive';
 import { radius, spacing, typography } from '@/src/theme';
 import { useAppTheme } from '@/src/theme/useAppTheme';
 import type { LegacyThemeColors } from '@/src/theme/legacy-colors';
 import type { UserLocation } from '@/src/models/location';
 
-const CITY_CENTER: UserLocation = {
-  latitude: TUGUEGARAO_STUDY_AREA.latitude,
-  longitude: TUGUEGARAO_STUDY_AREA.longitude,
-  accuracy: null,
-  retrievedAt: new Date(0).toISOString(),
-};
+const CITY_CENTER = resolveHospitalSearchLocation(null).location;
 
 export default function HospitalScreen() {
   const { profile, location, locationStatus, refreshLocation } = useIniTify();
@@ -39,26 +35,21 @@ export default function HospitalScreen() {
     setLoading(true);
     try {
       await refreshLocation('hospital');
-      // locationService is updated synchronously by refreshLocation.
       const fresh = locationService.getLastKnownLocation();
-      const isFallback = !fresh;
-      const activeLocation = fresh ?? {
-        ...CITY_CENTER,
-        retrievedAt: new Date().toISOString(),
-      };
+      const { location: activeLocation, isGps } = resolveHospitalSearchLocation(fresh);
 
       setSearchLocation(activeLocation);
-      setUsedFallback(isFallback);
+      setUsedFallback(!isGps);
 
       const result = await hospitalService.findAllRanked(activeLocation);
       setMessage(
-        isFallback
+        !isGps
           ? 'Location unavailable — distances are from Tuguegarao city center. Turn on GPS for accurate nearest hospital.'
           : (result.message ?? null),
       );
       setHospitals(result.data ?? []);
       const nearest = result.data?.[0];
-      if (profile && nearest && !isFallback) {
+      if (profile && nearest && isGps) {
         void databaseService.sync.syncHospitalLookup(profile, nearest, activeLocation);
       }
     } finally {

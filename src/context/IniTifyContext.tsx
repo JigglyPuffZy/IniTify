@@ -26,7 +26,7 @@ import { emergencyService } from '@/src/services/emergency/emergency.service';
 import { recommendationService } from '@/src/services/recommendations/recommendation.service';
 import { databaseService } from '@/src/services/database/database.service';
 import { appConfig } from '@/src/config/app.config';
-import { TUGUEGARAO_STUDY_AREA } from '@/src/constants/study-area';
+import { resolveTuguegaraoWeatherCoords } from '@/src/utils/tuguegarao-weather-location';
 import { checkInService } from '@/src/services/check-in/check-in.service';
 import { reminderManager } from '@/src/services/check-in/reminder-manager.service';
 import { shouldShowWeatherSafetyAlert, shouldSendPeriodicReminder } from '@/src/services/check-in/reminder-scheduler.service';
@@ -334,9 +334,10 @@ export function IniTifyProvider({ children }: { children: ReactNode }) {
       setIsWeatherRefreshing(true);
 
       try {
+        const weatherCoords = resolveTuguegaraoWeatherCoords(location);
         const result = await environmentalService.fetchHeatIndex(
-          TUGUEGARAO_STUDY_AREA.latitude,
-          TUGUEGARAO_STUDY_AREA.longitude,
+          weatherCoords.latitude,
+          weatherCoords.longitude,
         );
         setHeatDataMessage(result.message);
 
@@ -398,7 +399,7 @@ export function IniTifyProvider({ children }: { children: ReactNode }) {
         setIsWeatherRefreshing(false);
       }
     },
-    [profile],
+    [profile, location],
   );
 
   const applyManualDevHeatIndex = useCallback(

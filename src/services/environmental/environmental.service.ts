@@ -9,6 +9,7 @@ import { offlineCacheService } from '@/src/services/offline-cache/offline-cache.
 import { fetchOpenMeteoCurrent } from './open-meteo-client';
 import { appConfig } from '@/src/config/app.config';
 import { TUGUEGARAO_STUDY_AREA } from '@/src/constants/study-area';
+import { defaultTuguegaraoWeatherCoords } from '@/src/utils/tuguegarao-weather-location';
 
 /**
  * Live weather and heat index for Tuguegarao via Open-Meteo (no API key).
@@ -23,7 +24,7 @@ export const environmentalService = {
     return {
       configured: true,
       provider: 'open-meteo' as const,
-      message: `Live weather & heat index for ${TUGUEGARAO_STUDY_AREA.label} (Open-Meteo).`,
+      message: `Live weather & heat index for ${TUGUEGARAO_STUDY_AREA.label} (Open-Meteo, PAGASA station area).`,
     };
   },
 
@@ -31,8 +32,9 @@ export const environmentalService = {
     latitude: number | null,
     longitude: number | null,
   ): Promise<EnvironmentalDataResult> {
-    const heatLatitude = latitude ?? TUGUEGARAO_STUDY_AREA.latitude;
-    const heatLongitude = longitude ?? TUGUEGARAO_STUDY_AREA.longitude;
+    const defaults = defaultTuguegaraoWeatherCoords();
+    const heatLatitude = latitude ?? defaults.latitude;
+    const heatLongitude = longitude ?? defaults.longitude;
 
     try {
       const weather = await fetchOpenMeteoCurrent(heatLatitude, heatLongitude);

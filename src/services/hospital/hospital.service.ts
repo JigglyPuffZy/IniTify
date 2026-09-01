@@ -5,6 +5,12 @@ import type { UserLocation } from '@/src/models/location';
 import type { ServiceResult } from '@/src/models/service-result';
 import { distanceKm, estimateTravelMinutes } from '@/src/utils/geo';
 
+const STATIC_PROVIDER = 'static-tuguegarao';
+
+function activeHospitalProvider(): string {
+  return appConfig.hospitalDataProvider ?? STATIC_PROVIDER;
+}
+
 export interface HospitalInfo {
   id: string;
   name: string;
@@ -84,22 +90,13 @@ function buildMapsUrl(
  */
 export const hospitalService = {
   isConfigured(): boolean {
-    return appConfig.hospitalDataProvider !== null;
+    return true;
   },
 
   async findNearest(location: UserLocation): Promise<ServiceResult<HospitalInfo>> {
-    const provider = appConfig.hospitalDataProvider;
+    const provider = activeHospitalProvider();
 
-    if (!provider) {
-      return {
-        status: 'requires_configuration',
-        data: null,
-        message:
-          'Hospital data provider is not configured. Set EXPO_PUBLIC_HOSPITAL_DATA_PROVIDER=static-tuguegarao',
-      };
-    }
-
-    if (provider === 'static-tuguegarao') {
+    if (provider === STATIC_PROVIDER) {
       const nearest = findNearestStatic(location);
       return {
         status: 'success',
@@ -116,18 +113,9 @@ export const hospitalService = {
   },
 
   async findAllRanked(location: UserLocation): Promise<ServiceResult<HospitalInfo[]>> {
-    const provider = appConfig.hospitalDataProvider;
+    const provider = activeHospitalProvider();
 
-    if (!provider) {
-      return {
-        status: 'requires_configuration',
-        data: null,
-        message:
-          'Hospital data provider is not configured. Set EXPO_PUBLIC_HOSPITAL_DATA_PROVIDER=static-tuguegarao',
-      };
-    }
-
-    if (provider === 'static-tuguegarao') {
+    if (provider === STATIC_PROVIDER) {
       const ranked = rankAllStatic(location).map((hospital, index) => ({
         ...hospital,
         isNearest: index === 0,

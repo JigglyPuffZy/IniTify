@@ -71,7 +71,7 @@ export function NotificationsTabContent({
       const result = await notificationService.requestPermission();
       setPermission(await notificationService.getPermissionStatus());
       setPhoneMessage(result.message);
-      if (!result.data && result.status === 'denied') {
+      if (!result.data && result.status === 'permission_denied') {
         // If Android won't show the prompt again, send user to Settings.
         const status = await notificationService.getPermissionStatus();
         if (status === 'denied') {

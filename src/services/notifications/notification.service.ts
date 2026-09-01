@@ -102,7 +102,7 @@ async function presentImmediate(params: {
   const permission = await ensurePermission(N);
   if (!permission.granted) {
     return {
-      status: 'denied',
+      status: 'permission_denied',
       data: null,
       message: permission.canAskAgain
         ? 'Notification permission not granted yet. Tap Enable phone notifications.'
@@ -179,7 +179,7 @@ export const notificationService = {
         return { status: 'success', data: true, message: 'Phone notifications enabled.' };
       }
       return {
-        status: 'denied',
+        status: 'permission_denied',
         data: false,
         message: result.canAskAgain
           ? 'Permission not granted. Tap Allow when Android asks.'
