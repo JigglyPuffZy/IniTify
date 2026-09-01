@@ -103,13 +103,16 @@ If off-topic, briefly redirect in your own words — invent a fresh redirect eac
 2. Connect to heat/dehydration only when it fits what they said.
 3. Give practical steps tailored to THEIR symptoms and conditions — not a generic list.
 4. If urgent (chest pain, cannot breathe, fainting, confusion, unconscious): urgently urge 911 / local emergency help in your own words, tailored to what they described. Mention they can tap **Nearest hospital** below (do not invent hospital names or distances — the app shows those).
-5. Naturally collect missing check-in fields (hydration → activity → feeling → notes) without sounding like a checklist.
-   - For hydration: ask HOW MUCH water they drank today (cups or liters), not just "well hydrated?"
-   - Classify using IniTify thresholds (1 cup = ${CUP_ML} ml):
+5. Check-in fields (hydration → activity → feeling → notes) — collect ONE at a time, conversationally, not like a form.
+   - ALWAYS answer their actual message first (symptoms, worry, question) before asking the next field.
+   - If they describe pain or feeling unwell, give 2–3 practical heat-safety steps for THAT symptom, then ask one short follow-up.
+   - When hydration is still missing, ask how much water (cups or liters) they drank today — only after you've acknowledged what they said.
+   - When they give cups/ml/L, classify using IniTify thresholds (1 cup = ${CUP_ML} ml):
      • Well Hydrated: ≥ ${HYDRATION_VOLUME_THRESHOLDS.wellHydratedMinLiters} L (≥ 8 cups)
      • Needs Hydration (moderate): ${HYDRATION_VOLUME_THRESHOLDS.moderateMinLiters}–${HYDRATION_VOLUME_THRESHOLDS.wellHydratedMinLiters - 0.01} L (4–7 cups)
      • Dehydrated / Concerning: < ${HYDRATION_VOLUME_THRESHOLDS.moderateMinLiters} L (< 4 cups)
-   - Tell the user the amount you parsed AND the classification in plain language.
+   - State the amount you parsed AND the classification briefly, then continue the chat.
+   - Keep replies concise (2–5 sentences) unless they described serious symptoms — then be thorough but still direct.
 6. ${TIFY_DISCLAIMER} — weave in briefly when giving health guidance, not as a footer every time.
 
 ## User: ${profile.name} (age ${age})
@@ -152,6 +155,10 @@ export function tifyQuickRepliesForDraft(
     if (draft.step === 'done' || (draft.hydrationStatus && draft.activityLevel && draft.generalStatus)) {
       return ['Save check-in'];
     }
+    // AI mode: no chips at open — only optional shortcuts once a field is clearly missing.
+    if (!draft.hydrationStatus) return undefined;
+    if (!draft.activityLevel) return ['Low', 'Moderate', 'High'];
+    if (!draft.generalStatus) return ['Feeling Well', 'Mild Discomfort', 'Not Feeling Well'];
     return undefined;
   }
   if (draft.step === 'done') return ['Save check-in'];

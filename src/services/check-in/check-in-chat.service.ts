@@ -16,6 +16,8 @@ import type {
 import {
   buildTifySystemPrompt,
   isEmergencyUserMessage,
+  isOffTopicUserMessage,
+  getOffTopicRedirect,
   shouldOfferNearestHospital,
   TIFY_EMERGENCY_SCRIPT,
   tifyQuickRepliesForDraft,
@@ -139,10 +141,14 @@ function mergeDraftFromUserText(draft: CheckInChatDraft, userText: string): Chec
   const feeling = parseFeeling(text);
   const symptoms = detectSymptoms(text);
 
+  // Volume-only replies (e.g. "4 cups") should not pollute notes.
+  const isVolumeOnly = Boolean(hydration?.liters != null && text.length < 40);
+
   let notes = draft.notes;
   const isDescriptive =
     symptoms.length > 0 ||
     (text.length > 12 &&
+      !isVolumeOnly &&
       !hydration &&
       !activity &&
       !feeling &&
@@ -168,13 +174,15 @@ function buildAiGreeting(profile: UserProfile, weather: LiveWeatherFacts | null)
   const firstName = profile.name.split(' ')[0] || profile.name;
   const heat = weather?.heatIndexLabel ?? formatHeatIndexC(weather?.heatIndexC ?? null);
   const temp = weather?.tempLabel ?? formatTempC(weather?.tempC ?? null);
+  const invite =
+    "How are you feeling in the heat today? Tell me what's going on — symptoms, thirst, activity — and we'll work through your check-in together.";
   if (heat != null && temp != null) {
-    return `Hi ${firstName}. I'm Tify, your personal AI companion for heat safety. Right now in Tuguegarao it's ${temp}°C (air) with a heat index of ${heat}°C — same as your Home dashboard.`;
+    return `Hi ${firstName}. I'm Tify, your personal AI companion for heat safety. Right now in Tuguegarao it's ${temp}°C (air) with a heat index of ${heat}°C — same as your Home dashboard.\n\n${invite}`;
   }
   if (heat != null) {
-    return `Hi ${firstName}. I'm Tify, your personal AI companion for heat safety. Current heat index is ${heat}°C (same as your Home dashboard).`;
+    return `Hi ${firstName}. I'm Tify, your personal AI companion for heat safety. Current heat index is ${heat}°C (same as your Home dashboard).\n\n${invite}`;
   }
-  return `Hi ${firstName}. I'm Tify, your personal AI companion for heat safety.`;
+  return `Hi ${firstName}. I'm Tify, your personal AI companion for heat safety.\n\n${invite}`;
 }
 
 function buildSummary(draft: CheckInChatDraft): string {
@@ -204,7 +212,7 @@ function greetingMessage(
 
   const waterPrompt =
     '\n\nHow much water have you drunk so far today? Tell me in cups or liters (e.g. 4 cups or 1 L).';
-  return msg('assistant', intro + waterPrompt);
+  return msg('assistant', usesAi ? intro : intro + waterPrompt);
 }
 
 function stepQuickReplies(step: CheckInChatDraft['step']): string[] | undefined {
@@ -437,10 +445,10 @@ async function callCheckInAi(params: {
     },
     body: JSON.stringify({
       model,
-      temperature: 0.7,
-      frequency_penalty: 0.4,
-      presence_penalty: 0.3,
-      max_tokens: 720,
+      temperature: 0.65,
+      frequency_penalty: 0.35,
+      presence_penalty: 0.25,
+      max_tokens: 480,
       messages: [
         {
           role: 'system',
@@ -481,7 +489,7 @@ export const checkInChatService = {
   },
 
   getStarterQuickReplies(): string[] {
-    return [...WATER_INTAKE_QUICK_REPLIES];
+    return this.isAiConfigured() ? [] : [...WATER_INTAKE_QUICK_REPLIES];
   },
 
   startConversation(
@@ -518,8 +526,7 @@ export const checkInChatService = {
     userText: string;
     weather?: LiveWeatherFacts | null;
   }): Promise<CheckInChatTurnResult> {
-    const userMessage = msg('user', params.userText.trim());
-    const history = [...params.messages, userMessage];
+    const history = params.messages;
     const weather =
       params.weather ??
       ({
@@ -552,6 +559,19 @@ export const checkInChatService = {
     }
 
     if (this.isAiConfigured()) {
+      if (isOffTopicUserMessage(params.userText)) {
+        return withHospitalCta(
+          {
+            assistantMessage: msg('assistant', getOffTopicRedirect(params.draft)),
+            draft: params.draft,
+            readyToSave: false,
+            usesAi: true,
+            quickReplies: tifyQuickRepliesForDraft(params.draft, { aiMode: true }),
+          },
+          ctaParams,
+        );
+      }
+
       const draftWithUser = mergeDraftFromUserText(params.draft, params.userText);
 
       try {
