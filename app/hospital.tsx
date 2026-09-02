@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Text, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Text, StyleSheet, View } from 'react-native';
 import { Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useIniTify } from '@/src/context/IniTifyContext';
@@ -27,35 +27,59 @@ export default function HospitalScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [message, setMessage] = useState<string | null>(null);
   const [hospitals, setHospitals] = useState<HospitalInfo[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [usedFallback, setUsedFallback] = useState(false);
   const [searchLocation, setSearchLocation] = useState<UserLocation | null>(location);
 
-  const handleFindHospitals = useCallback(async () => {
-    setLoading(true);
-    try {
-      await refreshLocation('hospital');
-      const fresh = locationService.getLastKnownLocation();
-      const { location: activeLocation, isGps } = resolveHospitalSearchLocation(fresh);
-
+  const applyHospitalList = useCallback(
+    async (gps: UserLocation | null | undefined, options?: { syncLookup?: boolean }) => {
+      const { location: activeLocation, isGps } = resolveHospitalSearchLocation(gps);
       setSearchLocation(activeLocation);
       setUsedFallback(!isGps);
 
       const result = await hospitalService.findAllRanked(activeLocation);
+      const list = result.data ?? [];
+      setHospitals(list);
+
+      if (!list.length) {
+        setMessage(result.message || 'We could not load the hospital list.');
+        return;
+      }
+
       setMessage(
         !isGps
-          ? 'Location unavailable — distances are from Tuguegarao city center. Turn on GPS for accurate nearest hospital.'
+          ? 'Showing Tuguegarao hospitals by distance. Enable GPS for your exact nearest hospital.'
           : (result.message ?? null),
       );
-      setHospitals(result.data ?? []);
-      const nearest = result.data?.[0];
-      if (profile && nearest && isGps) {
+
+      const nearest = list[0];
+      if (options?.syncLookup && profile && nearest && isGps) {
         void databaseService.sync.syncHospitalLookup(profile, nearest, activeLocation);
       }
+    },
+    [profile],
+  );
+
+  const handleFindHospitals = useCallback(async () => {
+    setLoading(true);
+    setMessage(null);
+    try {
+      // Show hospitals immediately — do not block on a slow GPS fix.
+      await applyHospitalList(location ?? locationService.getLastKnownLocation());
+
+      // Then refresh GPS in the background and re-sort when ready.
+      void refreshLocation('hospital')
+        .catch(() => undefined)
+        .then(async () => {
+          await applyHospitalList(locationService.getLastKnownLocation(), { syncLookup: true });
+        });
+    } catch {
+      setMessage('Could not load hospitals. Tap refresh to try again.');
+      setHospitals([]);
     } finally {
       setLoading(false);
     }
-  }, [profile, refreshLocation]);
+  }, [applyHospitalList, location, refreshLocation]);
 
   useEffect(() => {
     void handleFindHospitals();
@@ -76,7 +100,7 @@ export default function HospitalScreen() {
     locationStatus === 'denied'
       ? 'Location permission is off. Enable it in Settings for accurate distances.'
       : usedFallback
-        ? 'Using city-center estimate — enable GPS for your true nearest hospital.'
+        ? 'Using Tuguegarao reference point — turn on GPS for your true nearest hospital.'
         : null;
 
   return (
@@ -101,10 +125,17 @@ export default function HospitalScreen() {
         </View>
       ) : null}
 
+      {loading && hospitals.length === 0 ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading Tuguegarao hospitals…</Text>
+        </View>
+      ) : null}
+
       {!loading && hospitals.length === 0 ? (
         <EmptyState
           title="No hospitals found"
-          message="We couldn't load the hospital list. Try refreshing."
+          message={message ?? "We couldn't load the hospital list. Try refreshing."}
           icon="medkit-outline"
           actionLabel="Try again"
           onAction={handleFindHospitals}
@@ -115,7 +146,7 @@ export default function HospitalScreen() {
         <View>
           <SectionHeader
             title={`${hospitals.length} hospitals`}
-            subtitle={loading ? 'Updating list…' : 'Closest first'}
+            subtitle={loading ? 'Updating distances…' : 'Closest first'}
           />
           <View style={styles.list}>
             {hospitals.map((hospital) => (
@@ -175,7 +206,7 @@ export default function HospitalScreen() {
         </View>
       ) : null}
 
-      {message ? <Text style={styles.message}>{message}</Text> : null}
+      {message && hospitals.length > 0 ? <Text style={styles.message}>{message}</Text> : null}
     </Screen>
   );
 }
@@ -201,6 +232,16 @@ function Chip({
 
 function createStyles(colors: LegacyThemeColors) {
   return StyleSheet.create({
+  loadingWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xxl,
+    gap: spacing.md,
+  },
+  loadingText: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
   gpsBanner: {
     flexDirection: 'row',
     alignItems: 'flex-start',

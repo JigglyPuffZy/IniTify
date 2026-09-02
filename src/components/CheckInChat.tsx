@@ -22,6 +22,7 @@ import type { UserLocation } from '@/src/models/location';
 import type { CheckInChatDraft, CheckInChatMessage, CheckInChatStep } from '@/src/models/check-in-chat';
 import { checkInChatService } from '@/src/services/check-in/check-in-chat.service';
 import { hospitalService, type HospitalInfo } from '@/src/services/hospital/hospital.service';
+import { locationService } from '@/src/services/location/location.service';
 import { resolveHospitalSearchLocation } from '@/src/utils/hospital-location';
 import { BrandMark } from '@/src/components/auth/BrandMark';
 import { useAppTheme } from '@/src/theme/useAppTheme';
@@ -308,7 +309,9 @@ export function CheckInChat({
       void onRequestLocation();
     }
 
-    const { location: searchAt, isGps } = resolveHospitalSearchLocation(location);
+    const { location: searchAt, isGps } = resolveHospitalSearchLocation(
+      location ?? locationService.getLastKnownLocation(),
+    );
     setHospitalSearchLocation(searchAt);
     setHospitalUsesGps(isGps);
 

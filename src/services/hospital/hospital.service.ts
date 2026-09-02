@@ -8,7 +8,18 @@ import { distanceKm, estimateTravelMinutes } from '@/src/utils/geo';
 const STATIC_PROVIDER = 'static-tuguegarao';
 
 function activeHospitalProvider(): string {
-  return appConfig.hospitalDataProvider ?? STATIC_PROVIDER;
+  const configured = appConfig.hospitalDataProvider?.trim().toLowerCase() ?? '';
+  if (!configured || configured === STATIC_PROVIDER || configured.includes('static')) {
+    return STATIC_PROVIDER;
+  }
+  return configured;
+}
+
+function rankedHospitalsForLocation(location: UserLocation): HospitalInfo[] {
+  return rankAllStatic(location).map((hospital, index) => ({
+    ...hospital,
+    isNearest: index === 0,
+  }));
 }
 
 export interface HospitalInfo {
@@ -58,12 +69,6 @@ function rankAllStatic(location: UserLocation): HospitalInfo[] {
     .map(({ sortKm: _sortKm, ...hospital }) => hospital);
 }
 
-function findNearestStatic(location: UserLocation): HospitalInfo {
-  const ranked = rankAllStatic(location);
-  const nearest = ranked[0];
-  return { ...nearest, isNearest: true };
-}
-
 function buildMapsUrl(
   provider: string,
   userLocation: UserLocation,
@@ -94,43 +99,55 @@ export const hospitalService = {
   },
 
   async findNearest(location: UserLocation): Promise<ServiceResult<HospitalInfo>> {
-    const provider = activeHospitalProvider();
-
-    if (provider === STATIC_PROVIDER) {
-      const nearest = findNearestStatic(location);
+    const ranked = rankedHospitalsForLocation(location);
+    const nearest = ranked[0];
+    if (!nearest) {
       return {
-        status: 'success',
-        data: nearest,
-        message: `Nearest listed facility: ${nearest.name} (${nearest.distanceKm} km).`,
+        status: 'unavailable',
+        data: null,
+        message: 'Hospital list is empty.',
+      };
+    }
+
+    const provider = activeHospitalProvider();
+    if (provider !== STATIC_PROVIDER) {
+      return {
+        status: 'unavailable',
+        data: null,
+        message: `Hospital provider "${provider}" is not supported yet. Use static-tuguegarao.`,
       };
     }
 
     return {
-      status: 'unavailable',
-      data: null,
-      message: `Hospital provider "${provider}" is not supported yet. Use static-tuguegarao.`,
+      status: 'success',
+      data: nearest,
+      message: `Nearest listed facility: ${nearest.name} (${nearest.distanceKm} km).`,
     };
   },
 
   async findAllRanked(location: UserLocation): Promise<ServiceResult<HospitalInfo[]>> {
-    const provider = activeHospitalProvider();
-
-    if (provider === STATIC_PROVIDER) {
-      const ranked = rankAllStatic(location).map((hospital, index) => ({
-        ...hospital,
-        isNearest: index === 0,
-      }));
+    const ranked = rankedHospitalsForLocation(location);
+    if (!ranked.length) {
       return {
-        status: 'success',
-        data: ranked,
-        message: `${ranked.length} major hospitals in Tuguegarao City (sorted by distance).`,
+        status: 'unavailable',
+        data: null,
+        message: 'Hospital list is empty.',
+      };
+    }
+
+    const provider = activeHospitalProvider();
+    if (provider !== STATIC_PROVIDER) {
+      return {
+        status: 'unavailable',
+        data: null,
+        message: `Hospital provider "${provider}" is not supported yet. Use static-tuguegarao.`,
       };
     }
 
     return {
-      status: 'unavailable',
-      data: null,
-      message: `Hospital provider "${provider}" is not supported yet. Use static-tuguegarao.`,
+      status: 'success',
+      data: ranked,
+      message: `${ranked.length} major hospitals in Tuguegarao City (sorted by distance).`,
     };
   },
 

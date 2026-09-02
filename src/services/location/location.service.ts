@@ -3,6 +3,29 @@ import type { LocationResult, UserLocation } from '@/src/models/location';
 
 let lastKnownLocation: UserLocation | null = null;
 
+const GPS_TIMEOUT_MS = 12_000;
+
+function mapPosition(position: Location.LocationObject): UserLocation {
+  return {
+    latitude: position.coords.latitude,
+    longitude: position.coords.longitude,
+    accuracy: position.coords.accuracy,
+    retrievedAt: new Date().toISOString(),
+  };
+}
+
+async function getCurrentPositionWithTimeout(
+  options: Location.LocationOptions,
+  timeoutMs = GPS_TIMEOUT_MS,
+): Promise<Location.LocationObject> {
+  return Promise.race([
+    Location.getCurrentPositionAsync(options),
+    new Promise<Location.LocationObject>((_, reject) => {
+      setTimeout(() => reject(new Error('Location request timed out')), timeoutMs);
+    }),
+  ]);
+}
+
 export const locationService = {
   getLastKnownLocation(): UserLocation | null {
     return lastKnownLocation;
@@ -39,26 +62,38 @@ export const locationService = {
         };
       }
 
-      // Prefer a fresh high-accuracy fix so nearest-hospital ranking is trustworthy.
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-        mayShowUserSettingsDialog: true,
-      });
+      // Fast path: OS-cached fix (avoids blank screens while waiting for GPS).
+      try {
+        const cached = await Location.getLastKnownPositionAsync({ maxAge: 120_000 });
+        if (cached) {
+          lastKnownLocation = mapPosition(cached);
+        }
+      } catch {
+        /* ignore */
+      }
 
-      lastKnownLocation = {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        accuracy: position.coords.accuracy,
-        retrievedAt: new Date().toISOString(),
-      };
-
-      return {
-        status: 'granted',
-        location: lastKnownLocation,
-        message: 'Location retrieved successfully.',
-      };
+      try {
+        const position = await getCurrentPositionWithTimeout({
+          accuracy: Location.Accuracy.Balanced,
+          mayShowUserSettingsDialog: true,
+        });
+        lastKnownLocation = mapPosition(position);
+        return {
+          status: 'granted',
+          location: lastKnownLocation,
+          message: 'Location retrieved successfully.',
+        };
+      } catch {
+        if (lastKnownLocation) {
+          return {
+            status: 'granted',
+            location: lastKnownLocation,
+            message: 'Using last known location (GPS fix timed out).',
+          };
+        }
+        throw new Error('GPS unavailable');
+      }
     } catch {
-      // Fall back to last known only if it is still relatively fresh (< 5 min).
       const maxAgeMs = 5 * 60 * 1000;
       const freshLastKnown =
         lastKnownLocation &&
