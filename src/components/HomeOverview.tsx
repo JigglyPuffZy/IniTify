@@ -21,6 +21,7 @@ import { WeatherRefreshCountdown } from '@/src/components/WeatherRefreshCountdow
 import { layout, radius, spacing, typography, fonts, cardShadow } from '@/src/theme';
 import { useAppTheme } from '@/src/theme/useAppTheme';
 import type { AppPalette } from '@/src/theme/palettes';
+import { useResponsive, useResponsiveTabBar, type ResponsiveMetrics } from '@/src/utils/responsive';
 
 const levelIcons: Record<HeatRiskLevel, React.ComponentProps<typeof Ionicons>['name']> = {
   LOW: 'shield-checkmark',
@@ -64,8 +65,13 @@ export function HomeOverview({
 }: HomeOverviewProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const tab = useResponsiveTabBar();
+  const responsive = useResponsive();
   const { palette, isDark } = useAppTheme();
-  const styles = useMemo(() => createStyles(palette, isDark), [palette, isDark]);
+  const styles = useMemo(
+    () => createStyles(palette, isDark, responsive),
+    [palette, isDark, responsive],
+  );
 
   const riskColor = assessmentLevel ? RISK_LEVEL_COLORS[assessmentLevel] : palette.primary;
 
@@ -76,7 +82,7 @@ export function HomeOverview({
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: spacing.huge + insets.bottom + 72 },
+          { paddingBottom: spacing.huge + insets.bottom + tab.totalHeight },
         ]}
         keyboardShouldPersistTaps="handled"
         refreshControl={
@@ -424,7 +430,7 @@ function BentoTile({
   );
 }
 
-function createStyles(p: AppPalette, isDark: boolean) {
+function createStyles(p: AppPalette, isDark: boolean, r: ResponsiveMetrics) {
   const shadow = cardShadow();
 
   return StyleSheet.create({
@@ -455,12 +461,15 @@ function createStyles(p: AppPalette, isDark: boolean) {
     /* Weather card */
     weatherSectionHead: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       alignItems: 'center',
       gap: spacing.sm,
+      marginBottom: spacing.lg,
     },
     weatherSectionRule: {
-      flex: 1,
-      minWidth: 0,
+      flexGrow: 1,
+      flexShrink: 1,
+      minWidth: r.isCompact ? '100%' : 120,
     },
     weatherRefreshBtn: {
       flexDirection: 'row',
@@ -468,7 +477,7 @@ function createStyles(p: AppPalette, isDark: boolean) {
       gap: 4,
       paddingVertical: spacing.xs,
       paddingHorizontal: spacing.sm,
-      marginBottom: spacing.lg,
+      flexShrink: 0,
     },
     weatherRefreshText: {
       fontFamily: fonts.bodySemiBold,
@@ -478,7 +487,7 @@ function createStyles(p: AppPalette, isDark: boolean) {
     weatherCard: {
       backgroundColor: p.surface,
       borderRadius: radius.xxl,
-      padding: layout.cardPaddingLg,
+      padding: r.isCompact ? spacing.lg : layout.cardPaddingLg,
       gap: spacing.lg,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: p.border,
@@ -497,22 +506,24 @@ function createStyles(p: AppPalette, isDark: boolean) {
     },
     tempValue: {
       fontFamily: fonts.header,
-      fontSize: 72,
+      fontSize: r.displayTempSize,
       letterSpacing: -4,
-      lineHeight: 76,
+      lineHeight: r.displayTempLineHeight,
       color: p.text,
     },
     tempUnit: {
       fontFamily: fonts.headerSemi,
-      fontSize: 22,
+      fontSize: r.tempUnitSize,
       color: p.textMuted,
-      marginTop: 10,
+      marginTop: r.isCompact ? 6 : 10,
       marginLeft: 2,
     },
     weatherMeta: {
       alignItems: 'flex-end',
       gap: spacing.xs,
-      maxWidth: '42%',
+      maxWidth: r.isCompact ? '38%' : '42%',
+      flexShrink: 1,
+      minWidth: 0,
     },
     weatherIcon: { width: 52, height: 52 },
     condition: {
@@ -524,28 +535,34 @@ function createStyles(p: AppPalette, isDark: boolean) {
     },
     heatStrip: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       alignItems: 'center',
-      gap: 6,
+      gap: spacing.sm,
       backgroundColor: p.primarySoft,
       borderRadius: radius.md,
       paddingVertical: spacing.md,
-      paddingHorizontal: spacing.lg,
+      paddingHorizontal: r.isCompact ? spacing.md : spacing.lg,
     },
     heatStripLabel: {
       ...typography.caption,
       fontFamily: fonts.bodyMedium,
       color: p.textSecondary,
-      flex: 1,
+      flexGrow: 1,
+      flexShrink: 1,
+      minWidth: 72,
     },
     heatStripValue: {
       fontFamily: fonts.headerSemi,
-      fontSize: 16,
+      fontSize: r.isCompact ? 15 : 16,
       color: p.primary,
+      flexShrink: 0,
     },
-    heatStripSep: { color: p.textLight, fontSize: 12 },
+    heatStripSep: { color: p.textLight, fontSize: 12, flexShrink: 0 },
     heatStripFeels: {
       ...typography.caption,
       color: p.textMuted,
+      flexShrink: 1,
+      minWidth: 0,
     },
     statRow: {
       flexDirection: 'row',
@@ -559,13 +576,15 @@ function createStyles(p: AppPalette, isDark: boolean) {
     },
     statLabel: {
       ...typography.overline,
-      fontSize: 9,
+      fontSize: r.isNarrow ? 8 : 9,
       color: p.textMuted,
+      textAlign: 'center',
     },
     statValue: {
       fontFamily: fonts.bodySemiBold,
-      fontSize: 13,
+      fontSize: r.isCompact ? 12 : 13,
       color: p.text,
+      textAlign: 'center',
     },
     statDivider: {
       width: StyleSheet.hairlineWidth,
@@ -640,9 +659,9 @@ function createStyles(p: AppPalette, isDark: boolean) {
     },
     riskLevel: {
       fontFamily: fonts.header,
-      fontSize: 26,
+      fontSize: r.isCompact ? 22 : 26,
       letterSpacing: -0.5,
-      lineHeight: 30,
+      lineHeight: r.isCompact ? 26 : 30,
     },
     riskDetailsBtn: { paddingVertical: 4, paddingLeft: spacing.sm },
     riskDetailsText: {
@@ -656,7 +675,7 @@ function createStyles(p: AppPalette, isDark: boolean) {
       lineHeight: 23,
     },
     riskActions: {
-      flexDirection: 'row',
+      flexDirection: r.stackRiskActions ? 'column' : 'row',
       gap: spacing.md,
     },
     riskActionGhost: {
@@ -725,9 +744,10 @@ function createStyles(p: AppPalette, isDark: boolean) {
       marginBottom: spacing.lg,
     },
     bentoTile: {
-      width: '48%',
+      width: r.bentoTileWidth,
+      maxWidth: '48%',
       flexGrow: 1,
-      minWidth: 140,
+      minWidth: 0,
       backgroundColor: p.surface,
       borderRadius: radius.xl,
       padding: spacing.lg,

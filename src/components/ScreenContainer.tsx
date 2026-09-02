@@ -201,6 +201,7 @@ function createStyles(p: AppPalette, isDark: boolean) {
       gap: 2,
       paddingVertical: 4,
       paddingLeft: spacing.sm,
+      flexShrink: 0,
     },
     sectionActionPressed: { opacity: 0.75 },
     sectionAction: { ...typography.caption, color: p.textMuted, fontWeight: '600' },

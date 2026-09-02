@@ -24,6 +24,7 @@ import { TUGUEGARAO_STUDY_AREA } from '@/src/constants/study-area';
 import { layout, radius, spacing, typography, fonts, cardShadow } from '@/src/theme';
 import { useAppTheme } from '@/src/theme/useAppTheme';
 import type { AppPalette } from '@/src/theme/palettes';
+import { useResponsive, useResponsiveTabBar } from '@/src/utils/responsive';
 
 interface EmergencyTabContentProps {
   profile: UserProfile;
@@ -40,9 +41,11 @@ export function EmergencyTabContent({
 }: EmergencyTabContentProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const tab = useResponsiveTabBar();
+  const { isCompact } = useResponsive();
   const { palette, isDark } = useAppTheme();
   const { assessment, location } = useIniTify();
-  const styles = useMemo(() => createStyles(palette, isDark), [palette, isDark]);
+  const styles = useMemo(() => createStyles(palette, isDark, isCompact), [palette, isDark, isCompact]);
   const [callResult, setCallResult] = useState<string | null>(null);
   const [dialingId, setDialingId] = useState<string | null>(null);
   const [smsSending, setSmsSending] = useState(false);
@@ -94,7 +97,7 @@ export function EmergencyTabContent({
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: spacing.huge + insets.bottom + 72 },
+          { paddingBottom: spacing.huge + insets.bottom + tab.totalHeight },
         ]}
       >
         <ScreenTopAccent />
@@ -394,7 +397,7 @@ function HotlineRow({
   );
 }
 
-function createStyles(p: AppPalette, isDark: boolean) {
+function createStyles(p: AppPalette, isDark: boolean, isCompact: boolean) {
   const shadow = cardShadow();
 
   return StyleSheet.create({
@@ -429,8 +432,8 @@ function createStyles(p: AppPalette, isDark: boolean) {
     sosHeroInner: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.lg,
-      padding: layout.cardPaddingLg,
+      gap: spacing.md,
+      padding: isCompact ? spacing.lg : layout.cardPaddingLg,
     },
     sosOrb: {
       width: 56,
@@ -561,6 +564,7 @@ function createStyles(p: AppPalette, isDark: boolean) {
     },
     hotlineRow: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       alignItems: 'center',
       gap: spacing.md,
       paddingVertical: spacing.lg,
@@ -607,10 +611,11 @@ function createStyles(p: AppPalette, isDark: boolean) {
       gap: 5,
       backgroundColor: p.primary,
       paddingVertical: 9,
-      paddingHorizontal: spacing.md,
+      paddingHorizontal: isCompact ? spacing.sm : spacing.md,
       borderRadius: radius.md,
-      minWidth: 72,
+      minWidth: isCompact ? 64 : 72,
       flexShrink: 0,
+      marginLeft: 'auto',
     },
     callBtnText: {
       fontFamily: fonts.bodySemiBold,

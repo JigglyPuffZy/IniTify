@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { radius, spacing, typography, fonts } from '@/src/theme';
 import { useAppTheme } from '@/src/theme/useAppTheme';
 import type { AppPalette } from '@/src/theme/palettes';
+import { useResponsive } from '@/src/utils/responsive';
 
 export function HeaderIconButton({
   icon,
@@ -17,7 +18,11 @@ export function HeaderIconButton({
   accessibilityLabel: string;
 }) {
   const { palette, isDark } = useAppTheme();
-  const styles = useMemo(() => createStyles(palette, isDark), [palette, isDark]);
+  const { mastheadTitleSize, isCompact } = useResponsive();
+  const styles = useMemo(
+    () => createStyles(palette, isDark, mastheadTitleSize, isCompact),
+    [palette, isDark, mastheadTitleSize, isCompact],
+  );
 
   return (
     <Pressable
@@ -57,7 +62,11 @@ export function PageMasthead({
 }: PageMastheadProps) {
   const router = useRouter();
   const { palette, isDark } = useAppTheme();
-  const styles = useMemo(() => createStyles(palette, isDark), [palette, isDark]);
+  const { mastheadTitleSize, isCompact } = useResponsive();
+  const styles = useMemo(
+    () => createStyles(palette, isDark, mastheadTitleSize, isCompact),
+    [palette, isDark, mastheadTitleSize, isCompact],
+  );
 
   function handleBack() {
     if (onBackPress) {
@@ -90,7 +99,7 @@ export function PageMasthead({
           <View style={styles.titleRow}>
             <View style={styles.textBlock}>
               {overline ? <Text style={styles.overline}>{overline}</Text> : null}
-              <Text style={styles.title} accessibilityRole="header">
+              <Text style={styles.title} accessibilityRole="header" numberOfLines={2}>
                 {title}
               </Text>
             </View>
@@ -131,7 +140,11 @@ export function HomeMasthead({
   style,
 }: HomeMastheadProps) {
   const { palette, isDark } = useAppTheme();
-  const styles = useMemo(() => createStyles(palette, isDark), [palette, isDark]);
+  const { mastheadTitleSize, isCompact } = useResponsive();
+  const styles = useMemo(
+    () => createStyles(palette, isDark, mastheadTitleSize, isCompact),
+    [palette, isDark, mastheadTitleSize, isCompact],
+  );
 
   return (
     <View style={[styles.homeWrap, style]}>
@@ -143,12 +156,14 @@ export function HomeMasthead({
           <View style={styles.homeRow}>
             <View style={styles.textBlock}>
               <Text style={styles.greeting}>{greeting}</Text>
-              <Text style={styles.title} accessibilityRole="header">
+              <Text style={styles.title} accessibilityRole="header" numberOfLines={1}>
                 {name}
               </Text>
               <View style={styles.metaRow}>
                 <Ionicons name="location-sharp" size={12} color={palette.primary} />
-                <Text style={styles.subtitle}>{location}</Text>
+                <Text style={styles.subtitle} numberOfLines={1}>
+                  {location}
+                </Text>
                 {isLive ? (
                   <>
                     <Text style={styles.metaDot}>·</Text>
@@ -204,7 +219,12 @@ const accentStyles = StyleSheet.create({
   },
 });
 
-function createStyles(p: AppPalette, isDark: boolean) {
+function createStyles(
+  p: AppPalette,
+  isDark: boolean,
+  mastheadTitleSize: number,
+  isCompact: boolean,
+) {
   return StyleSheet.create({
     wrap: {
       marginBottom: spacing.xl,
@@ -232,8 +252,8 @@ function createStyles(p: AppPalette, isDark: boolean) {
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: p.border,
-      paddingVertical: spacing.lg,
-      paddingHorizontal: spacing.lg,
+      paddingVertical: isCompact ? spacing.md : spacing.lg,
+      paddingHorizontal: isCompact ? spacing.md : spacing.lg,
       gap: spacing.sm,
       overflow: 'hidden',
     },
@@ -263,12 +283,13 @@ function createStyles(p: AppPalette, isDark: boolean) {
       flexDirection: 'row',
       alignItems: 'flex-start',
       gap: spacing.md,
+      flexWrap: 'wrap',
     },
     homeRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       justifyContent: 'space-between',
-      gap: spacing.lg,
+      gap: spacing.md,
     },
     textBlock: { flex: 1, minWidth: 0, gap: 4, paddingLeft: spacing.sm },
     headerRight: {
@@ -296,9 +317,9 @@ function createStyles(p: AppPalette, isDark: boolean) {
     },
     title: {
       fontFamily: fonts.header,
-      fontSize: 34,
+      fontSize: mastheadTitleSize,
       letterSpacing: -1,
-      lineHeight: 40,
+      lineHeight: mastheadTitleSize + 6,
       color: p.text,
     },
     metaRow: {

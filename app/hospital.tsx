@@ -22,9 +22,9 @@ const CITY_CENTER = resolveHospitalSearchLocation(null).location;
 
 export default function HospitalScreen() {
   const { profile, location, locationStatus, refreshLocation } = useIniTify();
-  const { horizontalPadding } = useResponsive();
+  const { horizontalPadding, isCompact } = useResponsive();
   const { colors } = useAppTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const styles = useMemo(() => createStyles(colors, isCompact), [colors, isCompact]);
   const [message, setMessage] = useState<string | null>(null);
   const [hospitals, setHospitals] = useState<HospitalInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -225,12 +225,14 @@ function Chip({
   return (
     <View style={styles.chip}>
       <Ionicons name={icon} size={13} color={colors.textMuted} />
-      <Text style={styles.chipText}>{text}</Text>
+      <Text style={styles.chipText} numberOfLines={1}>
+        {text}
+      </Text>
     </View>
   );
 }
 
-function createStyles(colors: LegacyThemeColors) {
+function createStyles(colors: LegacyThemeColors, isCompact: boolean) {
   return StyleSheet.create({
   loadingWrap: {
     alignItems: 'center',
@@ -259,7 +261,7 @@ function createStyles(colors: LegacyThemeColors) {
   },
   list: { gap: spacing.md },
   nearest: { borderColor: colors.primary, borderWidth: 1.5 },
-  cardHead: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
+  cardHead: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginBottom: spacing.md },
   avatar: {
     width: 40,
     height: 40,
@@ -280,8 +282,9 @@ function createStyles(colors: LegacyThemeColors) {
     borderRadius: radius.sm,
     overflow: 'hidden',
     alignSelf: 'flex-start',
+    flexShrink: 0,
   },
-  hospitalName: { ...typography.h3, color: colors.text, fontSize: 15 },
+  hospitalName: { ...typography.h3, color: colors.text, fontSize: isCompact ? 14 : 15 },
   hospitalDetail: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.lg },
   chip: {
@@ -289,11 +292,13 @@ function createStyles(colors: LegacyThemeColors) {
     alignItems: 'center',
     gap: 5,
     backgroundColor: colors.surfaceMuted,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: isCompact ? spacing.sm : spacing.md,
     paddingVertical: 6,
     borderRadius: radius.pill,
+    maxWidth: '100%',
+    flexShrink: 1,
   },
-  chipText: { ...typography.caption, color: colors.textSecondary, fontWeight: '600' },
+  chipText: { ...typography.caption, color: colors.textSecondary, fontWeight: '600', flexShrink: 1 },
   message: { ...typography.caption, color: colors.textMuted, textAlign: 'center' },
   });
 }

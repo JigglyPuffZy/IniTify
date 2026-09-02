@@ -17,6 +17,7 @@ import { PageMasthead, ScreenTopAccent } from '@/src/components/layout/PageMasth
 import { WeatherRefreshCountdown } from '@/src/components/WeatherRefreshCountdown';
 import { useAppTheme } from '@/src/theme/useAppTheme';
 import type { AppPalette } from '@/src/theme/palettes';
+import { useResponsive, useResponsiveTabBar, type ResponsiveMetrics } from '@/src/utils/responsive';
 
 function weatherIcon(
   condition: string,
@@ -52,8 +53,13 @@ export function WeatherTabContent({
   weatherRefreshSecondsLeft = 0,
 }: WeatherTabContentProps) {
   const insets = useSafeAreaInsets();
+  const tab = useResponsiveTabBar();
+  const responsive = useResponsive();
   const { palette, isDark } = useAppTheme();
-  const styles = useMemo(() => createStyles(palette, isDark), [palette, isDark]);
+  const styles = useMemo(
+    () => createStyles(palette, isDark, responsive),
+    [palette, isDark, responsive],
+  );
 
   return (
     <View style={styles.root}>
@@ -61,7 +67,7 @@ export function WeatherTabContent({
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: spacing.huge + insets.bottom + 72 },
+          { paddingBottom: spacing.huge + insets.bottom + tab.totalHeight },
         ]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.primary} />
@@ -341,7 +347,7 @@ function EmptyPanel({
   );
 }
 
-function createStyles(p: AppPalette, isDark: boolean) {
+function createStyles(p: AppPalette, isDark: boolean, r: ResponsiveMetrics) {
   const shadow = cardShadow();
 
   return StyleSheet.create({
@@ -354,7 +360,7 @@ function createStyles(p: AppPalette, isDark: boolean) {
     heroCard: {
       backgroundColor: p.surface,
       borderRadius: radius.xxl,
-      padding: layout.cardPaddingLg,
+      padding: r.isCompact ? spacing.lg : layout.cardPaddingLg,
       gap: spacing.md,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: p.border,
@@ -365,25 +371,27 @@ function createStyles(p: AppPalette, isDark: boolean) {
       flexDirection: 'row',
       alignItems: 'flex-start',
       justifyContent: 'space-between',
+      gap: spacing.md,
+      flexWrap: 'wrap',
     },
-    tempBlock: { flexDirection: 'row', alignItems: 'flex-start' },
+    tempBlock: { flexDirection: 'row', alignItems: 'flex-start', flexShrink: 1 },
     tempValue: {
       fontFamily: fonts.header,
-      fontSize: 76,
+      fontSize: r.displayTempSize + 4,
       letterSpacing: -4,
-      lineHeight: 80,
+      lineHeight: r.displayTempLineHeight + 4,
       color: p.text,
     },
     tempUnit: {
       fontFamily: fonts.headerSemi,
-      fontSize: 24,
+      fontSize: r.tempUnitSize + 2,
       color: p.textMuted,
-      marginTop: 12,
+      marginTop: r.isCompact ? 8 : 12,
       marginLeft: 2,
     },
     iconOrb: {
-      width: 72,
-      height: 72,
+      width: r.isCompact ? 60 : 72,
+      height: r.isCompact ? 60 : 72,
       borderRadius: radius.pill,
       backgroundColor: p.primarySoft,
       borderWidth: 1,
@@ -393,10 +401,11 @@ function createStyles(p: AppPalette, isDark: boolean) {
     },
     condition: {
       fontFamily: fonts.headerSemi,
-      fontSize: 20,
+      fontSize: r.isCompact ? 17 : 20,
       letterSpacing: -0.3,
       color: p.text,
-      lineHeight: 26,
+      lineHeight: r.isCompact ? 22 : 26,
+      flexShrink: 1,
     },
     location: {
       ...typography.caption,
@@ -405,12 +414,14 @@ function createStyles(p: AppPalette, isDark: boolean) {
     },
     heatFeatured: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       alignItems: 'center',
       justifyContent: 'space-between',
+      gap: spacing.sm,
       backgroundColor: p.primarySoft,
       borderRadius: radius.lg,
       paddingVertical: spacing.lg,
-      paddingHorizontal: spacing.lg,
+      paddingHorizontal: r.isCompact ? spacing.md : spacing.lg,
       marginTop: spacing.sm,
       borderWidth: 1,
       borderColor: isDark ? 'rgba(37,99,235,0.25)' : 'rgba(37,99,235,0.12)',
@@ -418,8 +429,10 @@ function createStyles(p: AppPalette, isDark: boolean) {
     heatFeaturedLeft: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.md,
-      flex: 1,
+      gap: spacing.sm,
+      flexGrow: 1,
+      flexShrink: 1,
+      minWidth: 0,
     },
     heatFeaturedLabel: {
       fontFamily: fonts.headerSemi,

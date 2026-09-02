@@ -10,7 +10,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,13 +29,14 @@ import { cardShadow, fonts, layout, radius, spacing, typography } from '@/src/th
 import type { AppPalette } from '@/src/theme/palettes';
 import { getHeroGradient } from '@/src/theme/palettes';
 import type { LiveWeatherFacts } from '@/src/utils/live-heat';
+import { useResponsive, type ResponsiveMetrics } from '@/src/utils/responsive';
 
 const ASSISTANT_NAME = 'Tify';
 
-const CHECK_IN_STEPS: { key: CheckInChatStep; label: string }[] = [
-  { key: 'hydration', label: 'Hydration' },
-  { key: 'activity', label: 'Activity' },
-  { key: 'feeling', label: 'Feeling' },
+const CHECK_IN_STEPS: { key: CheckInChatStep; label: string; shortLabel: string }[] = [
+  { key: 'hydration', label: 'Hydration', shortLabel: 'Water' },
+  { key: 'activity', label: 'Activity', shortLabel: 'Active' },
+  { key: 'feeling', label: 'Feeling', shortLabel: 'Feel' },
 ];
 
 function stepIndex(step: CheckInChatStep): number {
@@ -137,6 +137,7 @@ interface CheckInHeaderProps {
   draftStep: CheckInChatStep;
   onClose?: () => void;
   compact?: boolean;
+  hideStepLabels?: boolean;
 }
 
 function CheckInHeader({
@@ -147,6 +148,7 @@ function CheckInHeader({
   draftStep,
   onClose,
   compact = false,
+  hideStepLabels = false,
 }: CheckInHeaderProps) {
   const showSteps = !compact && !usesAi && draftStep !== 'done';
 
@@ -197,8 +199,11 @@ function CheckInHeader({
                       </Text>
                     )}
                   </View>
-                  <Text style={[styles.stepLabel, current && styles.stepLabelActive]}>
-                    {step.label}
+                  <Text
+                    style={[styles.stepLabel, current && styles.stepLabelActive]}
+                    numberOfLines={1}
+                  >
+                    {hideStepLabels ? '' : compact ? step.shortLabel : step.label}
                   </Text>
                 </View>
               );
@@ -222,12 +227,11 @@ export function CheckInChat({
 }: CheckInChatProps) {
   const { palette, isDark } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const { width: windowWidth } = useWindowDimensions();
-  const isCompact = windowWidth < 360;
-  const pagePad = isCompact ? 16 : layout.pagePadding;
+  const responsive = useResponsive();
+  const pagePad = responsive.horizontalPadding;
   const styles = useMemo(
-    () => createStyles(palette, isDark, pagePad),
-    [palette, isDark, pagePad],
+    () => createStyles(palette, isDark, pagePad, responsive),
+    [palette, isDark, pagePad, responsive],
   );
   const listRef = useRef<FlatList<CheckInChatMessage>>(null);
   const inputRef = useRef<TextInput>(null);
@@ -494,7 +498,8 @@ export function CheckInChat({
           activeStep={activeStep}
           draftStep={draft.step}
           onClose={onClose}
-          compact={keyboardVisible}
+          compact={keyboardVisible || responsive.isCompact}
+          hideStepLabels={responsive.hideStepLabels}
         />
 
         <FlatList
@@ -711,7 +716,7 @@ export function CheckInChat({
   );
 }
 
-function createStyles(p: AppPalette, isDark: boolean, pagePad: number) {
+function createStyles(p: AppPalette, isDark: boolean, pagePad: number, r: ResponsiveMetrics) {
   return StyleSheet.create({
     root: {
       flex: 1,
@@ -788,7 +793,7 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number) {
     stepDots: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      gap: spacing.sm,
+      gap: r.isCompact ? spacing.xs : spacing.sm,
     },
     stepItem: {
       flex: 1,
@@ -823,7 +828,7 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number) {
     },
     stepLabel: {
       fontFamily: fonts.bodyMedium,
-      fontSize: 11,
+      fontSize: r.isCompact ? 10 : 11,
       color: p.textMuted,
       textAlign: 'center',
     },
@@ -858,8 +863,9 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number) {
       width: 38,
     },
     bubbleWrap: {
-      maxWidth: '82%',
+      maxWidth: r.chatBubbleMaxWidth,
       alignItems: 'flex-start',
+      flexShrink: 1,
     },
     bubbleWrapUser: {
       alignItems: 'flex-end',
@@ -962,12 +968,12 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number) {
       borderColor: p.primary,
       backgroundColor: p.primarySoft,
       paddingVertical: 10,
-      paddingHorizontal: spacing.lg,
-      maxWidth: 220,
+      paddingHorizontal: r.isCompact ? spacing.md : spacing.lg,
+      maxWidth: r.chipMaxWidth,
     },
     chipText: {
       fontFamily: fonts.bodySemiBold,
-      fontSize: 14,
+      fontSize: r.isCompact ? 13 : 14,
       color: p.primary,
     },
     saveWrap: {
