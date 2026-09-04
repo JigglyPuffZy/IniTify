@@ -258,24 +258,30 @@ export function CheckInChat({
   const activeStep = stepIndex(draft.step);
   const canSend = Boolean(input.trim()) && !typing && !saving;
   const greetingHeatSynced = useRef(false);
+  const chatInitializedRef = useRef(false);
 
+  // Start conversation once per screen visit — do NOT reset when profile updates after save.
   useEffect(() => {
+    if (chatInitializedRef.current) return;
+    chatInitializedRef.current = true;
     greetingHeatSynced.current = false;
     const start = checkInChatService.startConversation(profile, heatIndexC, weatherFacts);
     setMessages(start.messages);
     setDraft(start.draft);
     setUsesAi(checkInChatService.isAiConfigured());
     setQuickReplies(checkInChatService.getStarterQuickReplies());
-  }, [profile]);
+    // Intentionally run once per mount; profile updates after save must not wipe chat history.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // After live weather refresh, rewrite only the starter greeting so Tify matches Weather tab
+  // After live weather refresh, rewrite only the starter greeting so Tify matches Weather tab.
   useEffect(() => {
     if (heatIndexC == null || greetingHeatSynced.current) return;
     if (messages.length !== 1 || messages[0]?.role !== 'assistant') return;
     const start = checkInChatService.startConversation(profile, heatIndexC, weatherFacts);
     setMessages(start.messages);
     greetingHeatSynced.current = true;
-  }, [heatIndexC, weatherFacts, profile, messages]);
+  }, [heatIndexC, weatherFacts, messages, profile]);
 
   const scrollToEnd = useCallback(() => {
     requestAnimationFrame(() => {
@@ -504,6 +510,7 @@ export function CheckInChat({
 
         <FlatList
           ref={listRef}
+          style={styles.flex}
           data={messages}
           keyExtractor={(item) => item.id}
           renderItem={renderMessage}

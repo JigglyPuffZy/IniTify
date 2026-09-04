@@ -6,7 +6,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useIniTify } from '@/src/context/IniTifyContext';
 import { Screen } from '@/src/components/layout/Screen';
 import { Button } from '@/src/components/UiComponents';
-import { FormField, TextField } from '@/src/components/FormField';
+import { FormField, TextField, SegmentedChoice, ChoiceList } from '@/src/components/FormField';
+import {
+  ACTIVITY_LEVELS,
+  HYDRATION_STATUSES,
+  GENERAL_STATUSES,
+  type UserProfile,
+} from '@/src/models/user';
+import { useResponsive } from '@/src/utils/responsive';
+import { useAppTheme } from '@/src/theme/useAppTheme';
+import type { AppPalette } from '@/src/theme/palettes';
+import { spacing, radius, typography, fonts, cardShadow } from '@/src/theme';
 import {
   HEALTH_CONDITION_OPTIONS,
   finalizeHealthConditions,
@@ -15,11 +25,6 @@ import {
   type HealthConditionOption,
 } from '@/src/constants/health-conditions';
 import { validateAge } from '@/src/utils/validation';
-import type { UserProfile } from '@/src/models/user';
-import { useResponsive } from '@/src/utils/responsive';
-import { useAppTheme } from '@/src/theme/useAppTheme';
-import type { AppPalette } from '@/src/theme/palettes';
-import { spacing, radius, typography, fonts, cardShadow } from '@/src/theme';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -35,6 +40,8 @@ const CONDITION_ICONS: Record<HealthConditionOption, IconName> = {
   Other: 'ellipsis-horizontal',
   None: 'checkmark-circle-outline',
 };
+
+const HYDRATION_ICONS = ['water', 'water-outline', 'alert-circle-outline'] as const;
 
 const QUICK_LINKS: { title: string; subtitle: string; href: string; icon: IconName }[] = [
   { title: 'Check-in', subtitle: 'Update how you feel', href: '/check-in', icon: 'pulse-outline' },
@@ -76,6 +83,11 @@ export default function HealthProfileScreen() {
     profile?.riskFactors.healthConditions ?? ['None'],
   );
   const [otherHealthCondition, setOtherHealthCondition] = useState('');
+  const [activityLevel, setActivityLevel] = useState(profile?.riskFactors.activityLevel ?? '');
+  const [hydrationStatus, setHydrationStatus] = useState(profile?.riskFactors.hydrationStatus ?? '');
+  const [generalStatus, setGeneralStatus] = useState(
+    profile?.riskFactors.generalStatus ?? 'Feeling Well',
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
@@ -86,6 +98,9 @@ export default function HealthProfileScreen() {
     const parsed = splitHealthConditionsForForm(profile.riskFactors.healthConditions ?? ['None']);
     setSelectedConditions(parsed.chips);
     setOtherHealthCondition(parsed.otherDetail);
+    setActivityLevel(profile.riskFactors.activityLevel ?? '');
+    setHydrationStatus(profile.riskFactors.hydrationStatus ?? '');
+    setGeneralStatus(profile.riskFactors.generalStatus ?? 'Feeling Well');
   }, [profile]);
 
   if (!profile) return <Redirect href="/" />;
@@ -118,6 +133,8 @@ export default function HealthProfileScreen() {
     if (selectedConditions.includes('Other') && !otherHealthCondition.trim()) {
       next.otherHealthCondition = 'Please describe your other health condition.';
     }
+    if (!activityLevel) next.activityLevel = 'Pick your usual activity level.';
+    if (!hydrationStatus) next.hydrationStatus = 'Pick your usual hydration level.';
     setErrors(next);
     if (Object.keys(next).length) return;
 
@@ -131,6 +148,9 @@ export default function HealthProfileScreen() {
           age: Number(age),
           healthConditions: resolvedConditions,
           healthCondition: primaryHealthCondition(resolvedConditions),
+          activityLevel,
+          hydrationStatus,
+          generalStatus,
         },
       };
       await saveProfile(updated);
@@ -285,6 +305,45 @@ export default function HealthProfileScreen() {
             </FormField>
           </View>
         ) : null}
+      </View>
+
+      <View style={[styles.sectionCard, shadow]}>
+        <View style={styles.sectionHead}>
+          <View style={[styles.sectionIcon, { backgroundColor: palette.primarySoft }]}>
+            <Ionicons name="fitness-outline" size={18} color={palette.primary} />
+          </View>
+          <View style={styles.sectionHeadText}>
+            <Text style={styles.sectionTitle}>Activity & hydration</Text>
+            <Text style={styles.sectionSubtitle}>
+              Used for heat-risk assessment — updated automatically after check-ins
+            </Text>
+          </View>
+        </View>
+
+        <FormField label="Usual activity level" required error={errors.activityLevel}>
+          <SegmentedChoice
+            options={[...ACTIVITY_LEVELS]}
+            selected={activityLevel}
+            onSelect={setActivityLevel}
+          />
+        </FormField>
+
+        <FormField label="How hydrated are you usually?" required error={errors.hydrationStatus}>
+          <ChoiceList
+            options={[...HYDRATION_STATUSES]}
+            icons={[...HYDRATION_ICONS]}
+            selected={hydrationStatus}
+            onSelect={setHydrationStatus}
+          />
+        </FormField>
+
+        <FormField label="Current general status">
+          <ChoiceList
+            options={[...GENERAL_STATUSES]}
+            selected={generalStatus}
+            onSelect={setGeneralStatus}
+          />
+        </FormField>
       </View>
 
       <View style={styles.quickSection}>

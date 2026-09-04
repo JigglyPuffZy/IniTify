@@ -154,12 +154,15 @@ function mergeDraftFromUserText(draft: CheckInChatDraft, userText: string): Chec
 
   return {
     ...draft,
+    // Prefer the latest explicit parse (e.g. "1 cup" → dehydrated) over stale draft values.
     hydrationStatus:
-      draft.hydrationStatus ?? hydration?.status ?? inferHydrationFromSymptoms(symptoms),
-    waterIntakeLiters: draft.waterIntakeLiters ?? hydration?.liters,
-    activityLevel: draft.activityLevel ?? activity ?? undefined,
+      hydration?.status ??
+      draft.hydrationStatus ??
+      (symptoms.length ? inferHydrationFromSymptoms(symptoms) : undefined),
+    waterIntakeLiters: hydration?.liters ?? draft.waterIntakeLiters,
+    activityLevel: activity ?? draft.activityLevel,
     generalStatus:
-      draft.generalStatus ?? feeling ?? inferGeneralStatusFromSymptoms(symptoms) ?? undefined,
+      feeling ?? draft.generalStatus ?? inferGeneralStatusFromSymptoms(symptoms) ?? undefined,
     notes,
   };
 }
@@ -484,6 +487,11 @@ export const checkInChatService = {
     return [...WATER_INTAKE_QUICK_REPLIES];
   },
 
+  /** Exposed for tests — applies user text to check-in draft (volume parse wins). */
+  applyUserTextToDraft(draft: CheckInChatDraft, userText: string): CheckInChatDraft {
+    return mergeDraftFromUserText(draft, userText);
+  },
+
   startConversation(
     profile: UserProfile,
     heatIndexC: number | null,
@@ -518,8 +526,7 @@ export const checkInChatService = {
     userText: string;
     weather?: LiveWeatherFacts | null;
   }): Promise<CheckInChatTurnResult> {
-    const userMessage = msg('user', params.userText.trim());
-    const history = [...params.messages, userMessage];
+    const history = params.messages;
     const weather =
       params.weather ??
       ({
@@ -569,10 +576,11 @@ export const checkInChatService = {
           const { display, data } = parseAiExtract(aiContent);
           const merged: CheckInChatDraft = {
             ...draftWithUser,
-            hydrationStatus: data?.hydrationStatus ?? draftWithUser.hydrationStatus,
-            activityLevel: data?.activityLevel ?? draftWithUser.activityLevel,
-            generalStatus: data?.generalStatus ?? draftWithUser.generalStatus,
-            notes: data?.notes ?? draftWithUser.notes,
+            // Local volume/keyword parse wins over AI JSON — keeps Tify aligned with saved status.
+            hydrationStatus: draftWithUser.hydrationStatus ?? data?.hydrationStatus,
+            activityLevel: draftWithUser.activityLevel ?? data?.activityLevel,
+            generalStatus: draftWithUser.generalStatus ?? data?.generalStatus,
+            notes: draftWithUser.notes ?? data?.notes,
             step: data?.step ?? draftWithUser.step,
           };
 
@@ -603,8 +611,8 @@ export const checkInChatService = {
         }
       } catch {
         const fallback = advanceScriptedTurn(params.userText, {
-          ...params.draft,
-          step: params.draft.hydrationStatus ? params.draft.step : 'hydration',
+          ...draftWithUser,
+          step: draftWithUser.hydrationStatus ? draftWithUser.step : 'hydration',
         });
         return withHospitalCta(
           {
@@ -619,8 +627,21 @@ export const checkInChatService = {
           ctaParams,
         );
       }
+
+      const scripted = advanceScriptedTurn(params.userText, {
+        ...draftWithUser,
+        step: draftWithUser.hydrationStatus ? draftWithUser.step : 'hydration',
+      });
+      return withHospitalCta({ ...scripted, usesAi: false }, ctaParams);
     }
 
-    return withHospitalCta(advanceScriptedTurn(params.userText, params.draft), ctaParams);
+    const draftWithUser = mergeDraftFromUserText(params.draft, params.userText);
+    return withHospitalCta(
+      advanceScriptedTurn(params.userText, {
+        ...draftWithUser,
+        step: draftWithUser.hydrationStatus ? draftWithUser.step : 'hydration',
+      }),
+      ctaParams,
+    );
   },
 };

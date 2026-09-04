@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.initify.app",
-      "versionCode": 9,
+      "versionCode": 10,
       "softwareKeyboardLayoutMode": "pan",
       "permissions": [
         "android.permission.POST_NOTIFICATIONS",

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { layout, radius, spacing, typography, platformShadow, fonts } from '@/src/theme';
 import { useAppTheme } from '@/src/theme/useAppTheme';
 import type { AppPalette } from '@/src/theme/palettes';
+import { useResponsive } from '@/src/utils/responsive';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -86,10 +87,15 @@ export function SegmentedChoice({
   onSelect: (value: string) => void;
 }) {
   const { palette, isDark } = useAppTheme();
-  const styles = useMemo(() => createFormStyles(palette, isDark), [palette, isDark]);
+  const { isCompact, isNarrow } = useResponsive();
+  const styles = useMemo(
+    () => createFormStyles(palette, isDark, isCompact, isNarrow),
+    [palette, isDark, isCompact, isNarrow],
+  );
+  const stackSegments = isNarrow;
 
   return (
-    <View style={styles.segmented}>
+    <View style={[styles.segmented, stackSegments && styles.segmentedStacked]}>
       {options.map((option) => {
         const active = selected === option;
         return (
@@ -98,6 +104,7 @@ export function SegmentedChoice({
             onPress={() => onSelect(option)}
             style={({ pressed }) => [
               styles.segment,
+              stackSegments && styles.segmentStacked,
               active && styles.segmentActive,
               pressed && styles.segmentPressed,
             ]}
@@ -126,7 +133,11 @@ export function ChoiceList({
   icons?: IconName[];
 }) {
   const { palette, isDark } = useAppTheme();
-  const styles = useMemo(() => createFormStyles(palette, isDark), [palette, isDark]);
+  const { isCompact } = useResponsive();
+  const styles = useMemo(
+    () => createFormStyles(palette, isDark, isCompact, false),
+    [palette, isDark, isCompact],
+  );
 
   return (
     <View style={styles.choiceList}>
@@ -150,7 +161,12 @@ export function ChoiceList({
                 <Ionicons name={icon} size={18} color={active ? palette.primary : palette.textMuted} />
               </View>
             ) : null}
-            <Text style={[styles.choiceRowText, active && styles.choiceRowTextActive]}>{option}</Text>
+            <Text
+              style={[styles.choiceRowText, active && styles.choiceRowTextActive]}
+              numberOfLines={2}
+            >
+              {option}
+            </Text>
             <View style={[styles.radio, active && styles.radioActive]}>
               {active ? <View style={styles.radioDot} /> : null}
             </View>
@@ -290,7 +306,12 @@ export function FormProgress({
   );
 }
 
-function createFormStyles(p: AppPalette, isDark = false) {
+function createFormStyles(
+  p: AppPalette,
+  isDark = false,
+  isCompact = false,
+  isNarrow = false,
+) {
   return StyleSheet.create({
     field: { marginBottom: spacing.lg },
     labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -328,14 +349,22 @@ function createFormStyles(p: AppPalette, isDark = false) {
       padding: 4,
       gap: 4,
     },
+    segmentedStacked: {
+      flexDirection: 'column',
+    },
     segment: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: spacing.md,
-      paddingHorizontal: spacing.sm,
+      paddingVertical: isCompact ? spacing.sm : spacing.md,
+      paddingHorizontal: isCompact ? spacing.xs : spacing.sm,
       borderRadius: radius.sm,
       minHeight: 44,
+      minWidth: 0,
+    },
+    segmentStacked: {
+      flex: 0,
+      width: '100%',
     },
     segmentPressed: { opacity: 0.85 },
     segmentActive: {
@@ -351,6 +380,7 @@ function createFormStyles(p: AppPalette, isDark = false) {
     segmentText: {
       ...typography.caption,
       fontWeight: '600',
+      fontSize: isCompact ? 12 : 13,
       color: isDark ? p.textSecondary : p.textMuted,
       textAlign: 'center',
     },
@@ -359,14 +389,15 @@ function createFormStyles(p: AppPalette, isDark = false) {
     choiceRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.md,
+      gap: isCompact ? spacing.sm : spacing.md,
       backgroundColor: p.surfaceInset,
       borderWidth: 1.5,
       borderColor: p.border,
       borderRadius: radius.md,
-      paddingVertical: spacing.md,
-      paddingHorizontal: spacing.md,
+      paddingVertical: isCompact ? spacing.sm : spacing.md,
+      paddingHorizontal: isCompact ? spacing.sm : spacing.md,
       minHeight: 52,
+      minWidth: 0,
     },
     choiceRowPressed: { opacity: 0.9 },
     choiceRowActive: {
@@ -374,15 +405,24 @@ function createFormStyles(p: AppPalette, isDark = false) {
       backgroundColor: p.primarySoft,
     },
     choiceRowIcon: {
-      width: 36,
-      height: 36,
+      width: isCompact ? 32 : 36,
+      height: isCompact ? 32 : 36,
       borderRadius: radius.sm,
       backgroundColor: p.surface,
       alignItems: 'center',
       justifyContent: 'center',
+      flexShrink: 0,
     },
     choiceRowIconActive: { backgroundColor: isDark ? p.surfaceMuted : '#FFFFFF' },
-    choiceRowText: { ...typography.bodySm, color: p.textSecondary, flex: 1, fontWeight: '500' },
+    choiceRowText: {
+      ...typography.bodySm,
+      fontSize: isCompact ? 13 : 14,
+      color: p.textSecondary,
+      flex: 1,
+      minWidth: 0,
+      flexShrink: 1,
+      fontWeight: '500',
+    },
     choiceRowTextActive: { color: p.text, fontWeight: '700' },
     radio: {
       width: 20,
@@ -392,6 +432,7 @@ function createFormStyles(p: AppPalette, isDark = false) {
       borderColor: p.border,
       alignItems: 'center',
       justifyContent: 'center',
+      flexShrink: 0,
     },
     radioActive: { borderColor: p.primary },
     radioDot: {
@@ -406,6 +447,7 @@ function createFormStyles(p: AppPalette, isDark = false) {
       gap: spacing.md,
       alignItems: 'flex-start',
       marginBottom: spacing.xs,
+      flexWrap: 'wrap',
     },
     stepBadge: {
       width: 28,
@@ -424,10 +466,16 @@ function createFormStyles(p: AppPalette, isDark = false) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    sectionText: { flex: 1, paddingTop: 2 },
-    sectionTitle: { ...typography.h3, color: p.text, fontSize: 17 },
-    sectionDesc: { ...typography.caption, color: p.textMuted, marginTop: 3, lineHeight: 17 },
-    formRow: { flexDirection: 'row', gap: spacing.md },
+    sectionText: { flex: 1, minWidth: 0, paddingTop: 2 },
+    sectionTitle: { ...typography.h3, color: p.text, fontSize: isCompact ? 16 : 17 },
+    sectionDesc: {
+      ...typography.caption,
+      color: p.textMuted,
+      marginTop: 3,
+      lineHeight: 17,
+      flexShrink: 1,
+    },
+    formRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   });
 }
 

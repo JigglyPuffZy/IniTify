@@ -43,10 +43,15 @@ describe('hydration volume', () => {
     expect(classifyHydrationFromLiters(0.5)).toBe('Dehydrated / Concerning');
   });
 
-  it('classifies from quick-reply style text', () => {
-    const result = classifyHydrationFromText('8 cups (2 L)');
-    expect(result?.status).toBe('Well Hydrated');
-    expect(result?.intake.liters).toBe(2);
+  it('classifies 1 cup as dehydrated (adviser demo)', () => {
+    const result = classifyHydrationFromText('1 cup lang');
+    expect(result?.status).toBe('Dehydrated / Concerning');
+    expect(result?.intake.liters).toBe(0.25);
+  });
+
+  it('parses quick-reply chip text', () => {
+    const result = classifyHydrationFromText('1 cup (250 ml)');
+    expect(result?.status).toBe('Dehydrated / Concerning');
   });
 
   it('documents adviser thresholds', () => {

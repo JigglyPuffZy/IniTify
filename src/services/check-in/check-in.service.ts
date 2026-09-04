@@ -6,7 +6,7 @@ import type {
 } from '@/src/models/check-in';
 import { DEFAULT_REMINDER_SETTINGS } from '@/src/models/check-in';
 import type { UserProfile } from '@/src/models/user';
-import { hydrationStatusToDb } from '@/src/models/user';
+import { hydrationStatusToDb, normalizeHydrationStatus } from '@/src/models/user';
 import { databaseService } from '@/src/services/database/database.service';
 
 const LEGACY_KEYS = {
@@ -127,9 +127,10 @@ export const checkInService = {
   ): UserProfile['riskFactors'] {
     return {
       ...profile.riskFactors,
-      hydrationStatus: checkIn.hydrationStatus,
+      hydrationStatus:
+        normalizeHydrationStatus(checkIn.hydrationStatus) ?? checkIn.hydrationStatus,
       activityLevel: checkIn.activityLevel,
-      generalStatus: checkIn.generalStatus,
+      generalStatus: checkIn.generalStatus ?? 'Feeling Well',
     };
   },
 
