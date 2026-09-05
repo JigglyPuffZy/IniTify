@@ -12,6 +12,7 @@ import {
   validateRulesDocument,
 } from '@/src/services/decision-tree/decision-tree.engine';
 import { assessHeatRisk } from '@/src/services/decision-tree/heat-risk-classifier';
+import { assessEnvironmentalRisk } from '@/src/services/decision-tree/heat-risk-classifier';
 import type { DecisionTreeRulesDocument } from '@/src/services/decision-tree/decision-tree.types';
 import { riskAssessmentService } from '@/src/services/risk-assessment/risk-assessment.service';
 import { recommendationService } from '@/src/services/recommendations/recommendation.service';
@@ -434,6 +435,69 @@ describe('vulnerability-aware heat risk', () => {
     });
     expect(result?.level).toBe('HIGH');
     expect(result?.level).not.toBe('EXTREME');
+  });
+
+  it('maps PAGASA heat-index bands to environmental levels', () => {
+    expect(assessEnvironmentalRisk(26).level).toBe('LOW');
+    expect(assessEnvironmentalRisk(29).level).toBe('MODERATE');
+    expect(assessEnvironmentalRisk(38).level).toBe('HIGH');
+    expect(assessEnvironmentalRisk(45).level).toBe('EXTREME');
+    expect(assessEnvironmentalRisk(55).level).toBe('CRITICAL');
+    expect(assessEnvironmentalRisk(29).label).toBe('Caution');
+    expect(assessEnvironmentalRisk(55).label).toBe('Extreme Danger');
+  });
+
+  it('classifies every PAGASA boundary exactly (poster: 27–32, 33–41, 42–51, 52+)', () => {
+    const healthy = {
+      age: 25,
+      healthCondition: 'None',
+      activityLevel: 'Low' as const,
+      hydrationStatus: 'Well hydrated' as const,
+      generalStatus: 'Feeling Well' as const,
+    };
+
+    const boundaryCases: Array<{
+      heatIndex: number;
+      environmental: 'LOW' | 'MODERATE' | 'HIGH' | 'EXTREME' | 'CRITICAL';
+      label: string;
+    }> = [
+      { heatIndex: 26.9, environmental: 'LOW', label: 'Below Caution' },
+      { heatIndex: 27, environmental: 'MODERATE', label: 'Caution' },
+      { heatIndex: 32, environmental: 'MODERATE', label: 'Caution' },
+      { heatIndex: 32.9, environmental: 'MODERATE', label: 'Caution' },
+      { heatIndex: 33, environmental: 'HIGH', label: 'Extreme Caution' },
+      { heatIndex: 41, environmental: 'HIGH', label: 'Extreme Caution' },
+      { heatIndex: 41.9, environmental: 'HIGH', label: 'Extreme Caution' },
+      { heatIndex: 42, environmental: 'EXTREME', label: 'Danger' },
+      { heatIndex: 51, environmental: 'EXTREME', label: 'Danger' },
+      { heatIndex: 51.9, environmental: 'EXTREME', label: 'Danger' },
+      { heatIndex: 52, environmental: 'CRITICAL', label: 'Extreme Danger' },
+      { heatIndex: 60, environmental: 'CRITICAL', label: 'Extreme Danger' },
+    ];
+
+    for (const { heatIndex, environmental, label } of boundaryCases) {
+      const env = assessEnvironmentalRisk(heatIndex);
+      expect(env.level).toBe(environmental);
+      expect(env.label).toBe(label);
+
+      const result = assessHeatRisk({ heatIndex, ...healthy });
+      expect(result?.environmentalLevel).toBe(environmental);
+      expect(result?.level).toBe(environmental);
+    }
+  });
+
+  it('classifies extreme danger heat index at 52°C or above', () => {
+    const result = decisionTreeService.evaluate({
+      heatIndex: 55,
+      age: 25,
+      healthCondition: 'None',
+      activityLevel: 'Low',
+      hydrationStatus: 'Well hydrated',
+      latitude: 17.6,
+      longitude: 121.7,
+    });
+    expect(result.status).toBe('success');
+    expect(result.data?.level).toBe('CRITICAL');
   });
 });
 

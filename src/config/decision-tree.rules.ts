@@ -11,12 +11,14 @@
  * 2. Documented individual risk factors (HeatHits research)
  */
 import type { DecisionTreeRulesDocument } from '@/src/services/decision-tree/decision-tree.types';
+import { PAGASA_HEAT_INDEX_THRESHOLDS } from '@/src/config/risk-assessment.config';
 
 /** Leaf shortcuts */
 const LOW = { type: 'leaf' as const, level: 'LOW' as const };
 const MODERATE = { type: 'leaf' as const, level: 'MODERATE' as const };
 const HIGH = { type: 'leaf' as const, level: 'HIGH' as const };
 const EXTREME = { type: 'leaf' as const, level: 'EXTREME' as const };
+const CRITICAL = { type: 'leaf' as const, level: 'CRITICAL' as const };
 
 /** Escalates low heat-index cases when individual factors are present */
 const lowHeatBranch = {
@@ -120,30 +122,37 @@ const highHeatBranch = {
 
 const decisionTreeRules: DecisionTreeRulesDocument = {
   enabled: true,
-  version: '1.1.0-balanced',
+  version: '1.2.0-pagasa-noaa-bands',
   description:
-    'PAGASA iHeatMap bands with balanced escalation — EXTREME at ≥42°C heat index, or dehydration / combined risk factors in the 33–41°C band.',
+    'PAGASA / NOAA heat-index bands — Danger at 42–51°C, Extreme Danger at ≥52°C, with balanced personal-factor escalation.',
   source:
-    'IniTify field tuning 2026-08-12 — reduces false EXTREME when only one risk factor is present in Tuguegarao’s typical 33–41°C heat-index range.',
+    'DOST-PAGASA heat index classifications (Caution 27–32, Extreme Caution 33–41, Danger 42–51, Extreme Danger 52+).',
   root: {
     type: 'split',
     feature: 'heatIndex',
     operator: '>=',
-    value: 42,
-    true: EXTREME,
+    value: PAGASA_HEAT_INDEX_THRESHOLDS.extremeDangerMin,
+    true: CRITICAL,
     false: {
       type: 'split',
       feature: 'heatIndex',
       operator: '>=',
-      value: 33,
-      true: highHeatBranch,
+      value: PAGASA_HEAT_INDEX_THRESHOLDS.dangerMin,
+      true: EXTREME,
       false: {
         type: 'split',
         feature: 'heatIndex',
         operator: '>=',
-        value: 27,
-        true: moderateHeatBranch,
-        false: lowHeatBranch,
+        value: PAGASA_HEAT_INDEX_THRESHOLDS.extremeCautionMin,
+        true: highHeatBranch,
+        false: {
+          type: 'split',
+          feature: 'heatIndex',
+          operator: '>=',
+          value: PAGASA_HEAT_INDEX_THRESHOLDS.cautionMin,
+          true: moderateHeatBranch,
+          false: lowHeatBranch,
+        },
       },
     },
   },

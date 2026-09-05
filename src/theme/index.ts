@@ -64,10 +64,11 @@ export const gradients = {
 };
 
 export const riskGradients: Record<string, readonly [string, string]> = {
-  LOW: ['#93C5FD', '#BFDBFE'],
-  MODERATE: ['#60A5FA', '#93C5FD'],
-  HIGH: ['#3B82F6', '#60A5FA'],
-  EXTREME: ['#1D4ED8', '#3B82F6'],
+  LOW: ['#86EFAC', '#BBF7D0'],
+  MODERATE: ['#FACC15', '#FDE047'],
+  HIGH: ['#FB923C', '#FDBA74'],
+  EXTREME: ['#EA580C', '#F97316'],
+  CRITICAL: ['#DC2626', '#EF4444'],
 };
 
 export const spacing = {

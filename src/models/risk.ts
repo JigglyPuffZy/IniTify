@@ -1,5 +1,5 @@
 /** Documented Decision Tree output categories */
-export type HeatRiskLevel = 'LOW' | 'MODERATE' | 'HIGH' | 'EXTREME';
+export type HeatRiskLevel = 'LOW' | 'MODERATE' | 'HIGH' | 'EXTREME' | 'CRITICAL';
 
 export interface RiskAssessmentInput {
   heatIndex: number | null;
@@ -33,4 +33,5 @@ export const HEAT_RISK_LEVELS: HeatRiskLevel[] = [
   'MODERATE',
   'HIGH',
   'EXTREME',
+  'CRITICAL',
 ];

@@ -212,7 +212,7 @@ export const notificationService = {
       body: precautionSummary || 'Your heat risk increased. Stay hydrated and review safety tips.',
       data: { type: 'heat-risk', level, href: '/safety-tips' },
       channelId: HEAT_CHANNEL_ID,
-      priority: level === 'EXTREME' ? 'max' : 'high',
+      priority: level === 'EXTREME' || level === 'CRITICAL' ? 'max' : 'high',
     });
   },
 

@@ -1,17 +1,17 @@
-import { useMemo } from 'react';
-import { Text, StyleSheet, View } from 'react-native';
-import { Redirect, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useIniTify } from '@/src/context/IniTifyContext';
 import { Screen } from '@/src/components/layout/Screen';
-import { EmptyState, SectionHeader, SurfaceCard } from '@/src/components/ScreenContainer';
 import { RiskLevelBadge } from '@/src/components/RiskLevelBadge';
+import { EmptyState, SectionHeader, SurfaceCard } from '@/src/components/ScreenContainer';
 import { Button } from '@/src/components/UiComponents';
 import { RISK_LEVEL_LABELS } from '@/src/constants/risk-levels';
-import { useResponsive } from '@/src/utils/responsive';
-import { spacing, typography, radius } from '@/src/theme';
-import { useAppTheme } from '@/src/theme/useAppTheme';
+import { useIniTify } from '@/src/context/IniTifyContext';
+import { radius, spacing, typography } from '@/src/theme';
 import type { LegacyThemeColors } from '@/src/theme/legacy-colors';
+import { useAppTheme } from '@/src/theme/useAppTheme';
+import { useResponsive } from '@/src/utils/responsive';
+import { Ionicons } from '@expo/vector-icons';
+import { Redirect, useRouter } from 'expo-router';
+import { useMemo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 export default function AssessmentScreen() {
   const router = useRouter();

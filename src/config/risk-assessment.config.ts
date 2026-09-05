@@ -1,5 +1,16 @@
 import type { HeatRiskLevel } from '@/src/models/risk';
 
+/**
+ * PAGASA / NOAA heat-index bands (°C) — DOST-PAGASA adapted from NWS NOAA.
+ * Caution 27–32 | Extreme Caution 33–41 | Danger 42–51 | Extreme Danger 52+
+ */
+export const PAGASA_HEAT_INDEX_THRESHOLDS = {
+  cautionMin: 27,
+  extremeCautionMin: 33,
+  dangerMin: 42,
+  extremeDangerMin: 52,
+} as const;
+
 /** PAGASA iHeatMap heat-index bands (°C) — authoritative environmental baseline. */
 export interface HeatIndexBand {
   readonly maxExclusive: number;
@@ -12,7 +23,7 @@ export interface RiskAssessmentConfig {
   readonly environmental: {
     readonly heatIndexBands: readonly HeatIndexBand[];
     readonly humidity: {
-      /** When humidity is high, environmental risk may bump one step (never above EXTREME). */
+      /** When humidity is high, environmental risk may bump one step (never above CRITICAL). */
       readonly enabled: boolean;
       readonly highThresholdPercent: number;
       /** Only bump when current environmental level is at or below this index. */
@@ -41,7 +52,7 @@ export interface RiskAssessmentConfig {
    */
   readonly combine: Record<
     HeatRiskLevel,
-    Partial<Record<'MODERATE' | 'HIGH' | 'EXTREME', number>>
+    Partial<Record<'MODERATE' | 'HIGH' | 'EXTREME' | 'CRITICAL', number>>
   >;
   readonly criticalOverrides: {
     readonly dehydratedMinEnvironmental: HeatRiskLevel;
@@ -55,13 +66,14 @@ export interface RiskAssessmentConfig {
 }
 
 export const riskAssessmentConfig: RiskAssessmentConfig = {
-  version: '2.0.0-vulnerability-aware',
+  version: '2.1.0-pagasa-noaa-bands',
   environmental: {
     heatIndexBands: [
-      { maxExclusive: 27, level: 'LOW', label: 'Below caution' },
-      { maxExclusive: 33, level: 'MODERATE', label: 'Caution' },
-      { maxExclusive: 42, level: 'HIGH', label: 'Extreme caution' },
-      { maxExclusive: Number.POSITIVE_INFINITY, level: 'EXTREME', label: 'Danger' },
+      { maxExclusive: PAGASA_HEAT_INDEX_THRESHOLDS.cautionMin, level: 'LOW', label: 'Below Caution' },
+      { maxExclusive: PAGASA_HEAT_INDEX_THRESHOLDS.extremeCautionMin, level: 'MODERATE', label: 'Caution' },
+      { maxExclusive: PAGASA_HEAT_INDEX_THRESHOLDS.dangerMin, level: 'HIGH', label: 'Extreme Caution' },
+      { maxExclusive: PAGASA_HEAT_INDEX_THRESHOLDS.extremeDangerMin, level: 'EXTREME', label: 'Danger' },
+      { maxExclusive: Number.POSITIVE_INFINITY, level: 'CRITICAL', label: 'Extreme Danger' },
     ],
     humidity: {
       enabled: true,
@@ -90,10 +102,11 @@ export const riskAssessmentConfig: RiskAssessmentConfig = {
     additionalConditionPoints: 1,
   },
   combine: {
-    LOW: { MODERATE: 2, HIGH: 6, EXTREME: 12 },
-    MODERATE: { HIGH: 3, EXTREME: 10 },
-    HIGH: { EXTREME: 5 },
-    EXTREME: {},
+    LOW: { MODERATE: 2, HIGH: 6, EXTREME: 12, CRITICAL: 15 },
+    MODERATE: { HIGH: 3, EXTREME: 10, CRITICAL: 14 },
+    HIGH: { EXTREME: 5, CRITICAL: 10 },
+    EXTREME: { CRITICAL: 3 },
+    CRITICAL: {},
   },
   criticalOverrides: {
     dehydratedMinEnvironmental: 'HIGH',
@@ -111,5 +124,7 @@ export const riskAssessmentConfig: RiskAssessmentConfig = {
       'Reduce outdoor exertion (≤20–30 continuous minutes). Seek shade/AC within 5 minutes if unwell. Hydrate ~250 ml every 15–20 min and watch for dizziness or nausea.',
     EXTREME:
       'Avoid strenuous outdoor activity from ~10:00 AM–3:00 PM. Move to a cool place immediately, drink 250–500 ml water in the next 15–20 minutes (unless fluid-restricted), and seek help if you feel unwell.',
+    CRITICAL:
+      'Extreme danger heat — stay indoors in air conditioning if possible. Do not work or exercise outdoors. Drink 250–500 ml water every 15–20 minutes (unless fluid-restricted). Seek medical help immediately if you feel unwell.',
   },
 };

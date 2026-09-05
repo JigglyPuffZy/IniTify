@@ -675,9 +675,13 @@ export function IniTifyProvider({ children }: { children: ReactNode }) {
     const prev = prevRiskLevelRef.current;
     prevRiskLevelRef.current = level;
 
-    const elevated = level === 'HIGH' || level === 'EXTREME';
-    const wasElevated = prev === 'HIGH' || prev === 'EXTREME';
-    const escalated = elevated && (!wasElevated || (prev !== 'EXTREME' && level === 'EXTREME'));
+    const elevated = level === 'HIGH' || level === 'EXTREME' || level === 'CRITICAL';
+    const wasElevated = prev === 'HIGH' || prev === 'EXTREME' || prev === 'CRITICAL';
+    const escalated =
+      elevated &&
+      (!wasElevated ||
+        ((prev === 'HIGH' && (level === 'EXTREME' || level === 'CRITICAL')) ||
+          (prev === 'EXTREME' && level === 'CRITICAL')));
     if (!escalated || !prev) return;
 
     void (async () => {

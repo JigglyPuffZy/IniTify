@@ -89,7 +89,7 @@ export const emergencyService = {
   },
 
   evaluateIndicators(currentRiskLevel: HeatRiskLevel | null): EmergencyIndicators {
-    const extremeHeatRisk = currentRiskLevel === 'EXTREME';
+    const extremeHeatRisk = currentRiskLevel === 'EXTREME' || currentRiskLevel === 'CRITICAL';
 
     let repeatedFailedSafetyPrompts = false;
     if (emergencyThresholdConfig.failedSafetyPromptCount !== null) {

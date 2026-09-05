@@ -1,12 +1,13 @@
 import type { CheckInChatDraft } from '@/src/models/check-in-chat';
 import type { HeatRiskLevel } from '@/src/models/risk';
+import { PAGASA_HEAT_INDEX_THRESHOLDS } from '@/src/config/risk-assessment.config';
 import { formatConditionLabel, getActiveHealthConditions } from '@/src/constants/health-conditions';
 import type { UserProfile } from '@/src/models/user';
 
 /** Topics Tify is allowed to discuss — everything else gets a polite redirect. */
 export const TIFY_ALLOWED_TOPICS = [
   'IniTify app (check-in, heat risk, safety tips, emergency, weather, profile)',
-  'Heat index and heat risk levels (LOW, MODERATE, HIGH, EXTREME) in Tuguegarao',
+  'Heat index and heat risk levels (Below Caution, Caution, Extreme Caution, Danger, Extreme Danger) in Tuguegarao',
   'Hydration, activity level, and how the user feels in hot weather',
   'Heat safety for the user\'s health conditions (not general medical advice)',
   'When to rest, drink water, seek shade, or call emergency hotlines',
@@ -105,19 +106,34 @@ export function riskLevelGuidance(
   heatIndexC: number | null,
 ): string {
   const level = risk as HeatRiskLevel | null;
-  if (level === 'EXTREME' || (heatIndexC != null && heatIndexC >= 42)) {
+  if (
+    level === 'CRITICAL' ||
+    (heatIndexC != null && heatIndexC >= PAGASA_HEAT_INDEX_THRESHOLDS.extremeDangerMin)
+  ) {
     return (
-      'Extreme heat risk — limit outdoor time to ≤15–20 min bursts, drink 250–500 ml water in the next 15–20 min (unless fluid-restricted), ' +
+      'Extreme danger heat — stay indoors in air-conditioning if possible. Do not work or exercise outdoors. ' +
+      'Drink 250–500 ml water every 15–20 min (unless fluid-restricted). Kung may sintomas (pagkahilo, kalituhan), tumawag sa emergency hotline agad.'
+    );
+  }
+  if (
+    level === 'EXTREME' ||
+    (heatIndexC != null && heatIndexC >= PAGASA_HEAT_INDEX_THRESHOLDS.dangerMin)
+  ) {
+    return (
+      'Danger heat — limit outdoor time to ≤15–20 min bursts, drink 250–500 ml water in the next 15–20 min (unless fluid-restricted), ' +
       'rest in the coolest place available. Kung may sintomas (pagkahilo, kalituhan), tumawag sa emergency hotline.'
     );
   }
-  if (level === 'HIGH' || (heatIndexC != null && heatIndexC >= 33)) {
+  if (
+    level === 'HIGH' ||
+    (heatIndexC != null && heatIndexC >= PAGASA_HEAT_INDEX_THRESHOLDS.extremeCautionMin)
+  ) {
     return (
       'High heat risk — uminom ng ~250 ml every 15–20 min sa init, mag-5–10 min break sa shade every 30–45 min, ' +
       'limit continuous outdoor work to ≤20–30 min. Tingnan ang Safety Tips sa app para sa condition mo.'
     );
   }
-  if (level === 'MODERATE' || (heatIndexC != null && heatIndexC >= 27)) {
+  if (level === 'MODERATE' || (heatIndexC != null && heatIndexC >= PAGASA_HEAT_INDEX_THRESHOLDS.cautionMin)) {
     return 'Moderate heat — aim for ≥2 L total fluids on hot days; rest 5–10 min every 30–45 min outdoors.';
   }
   return 'Lower heat risk ngayon — still aim for ~250 ml every 1–2 hours outdoors and mag-check-in regularly.';
@@ -173,7 +189,10 @@ export function shouldOfferNearestHospital(params: {
   if (isEmergencyUserMessage(params.userText)) return true;
   if (params.hasSevereSymptoms) return true;
 
-  const highHeat = params.riskLevel === 'HIGH' || params.riskLevel === 'EXTREME';
+  const highHeat =
+    params.riskLevel === 'HIGH' ||
+    params.riskLevel === 'EXTREME' ||
+    params.riskLevel === 'CRITICAL';
   if (DANGEROUS_FEELING_PATTERNS.test(params.userText) && highHeat) return true;
   if (params.generalStatus === 'Not Feeling Well' && highHeat) return true;
   if (params.hydrationStatus === 'Dehydrated / Concerning' && highHeat) return true;

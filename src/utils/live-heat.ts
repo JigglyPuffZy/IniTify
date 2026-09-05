@@ -1,5 +1,5 @@
-import type { CurrentWeatherSnapshot } from '@/src/models/weather';
 import type { HeatIndexReading } from '@/src/models/environmental';
+import type { CurrentWeatherSnapshot } from '@/src/models/weather';
 
 /** Live heat index — same value Weather / Home show (prefer snapshot over cached reading). */
 export function getLiveHeatIndexC(

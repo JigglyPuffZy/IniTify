@@ -38,6 +38,12 @@ const RISK_RECOMMENDATIONS: Record<HeatRiskLevel, RecommendationType[]> = {
     'seek_shade',
     'limit_outdoor_activities',
   ],
+  CRITICAL: [
+    'hydration',
+    'rest',
+    'seek_shade',
+    'limit_outdoor_activities',
+  ],
 };
 
 /**

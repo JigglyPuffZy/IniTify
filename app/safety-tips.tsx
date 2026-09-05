@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { StyleSheet, View, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Redirect } from 'expo-router';
 
@@ -15,18 +15,16 @@ import { RecommendationCard } from '@/src/components/UiComponents';
 import { RiskLevelBadge } from '@/src/components/RiskLevelBadge';
 
 import {
+    healthSafetyKbService,
 
-  healthSafetyKbService,
-
-  type PersonalizedSafetyTip,
-
+    type PersonalizedSafetyTip,
 } from '@/src/services/health-safety/health-safety-kb.service';
 
 import { useResponsive } from '@/src/utils/responsive';
 
 import { useAppTheme } from '@/src/theme/useAppTheme';
 
-import { spacing, radius, typography, cardShadow } from '@/src/theme';
+import { cardShadow, radius, spacing, typography } from '@/src/theme';
 
 
 

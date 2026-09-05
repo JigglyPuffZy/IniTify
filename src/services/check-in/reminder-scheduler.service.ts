@@ -3,6 +3,7 @@ import { frequencyToMinutes } from '@/src/models/check-in';
 import type { HealthCheckIn } from '@/src/models/check-in';
 import type { UserProfile } from '@/src/models/user';
 import type { HeatRiskLevel } from '@/src/models/risk';
+import { PAGASA_HEAT_INDEX_THRESHOLDS } from '@/src/config/risk-assessment.config';
 
 const CHECK_IN_NOTIFICATION_TYPE = 'health-check-in';
 
@@ -100,6 +101,7 @@ export function shouldShowWeatherSafetyAlert(params: {
   const elevated =
     riskLevel === 'HIGH' ||
     riskLevel === 'EXTREME' ||
+    riskLevel === 'CRITICAL' ||
     (heatIndexC !== null && heatIndexC >= 38);
 
   if (!elevated) return false;
@@ -140,8 +142,15 @@ export function mapWeatherToHazard(params: {
   if (c.includes('wind')) return 'Strong Winds';
   if (c.includes('lightning')) return 'Lightning';
 
-  if (heatIndexC !== null && heatIndexC >= 41) return 'Extreme Heat';
-  if (heatIndexC !== null && heatIndexC >= 33) return 'High Heat Index';
+  if (heatIndexC !== null && heatIndexC >= PAGASA_HEAT_INDEX_THRESHOLDS.extremeDangerMin) {
+    return 'Extreme Heat';
+  }
+  if (heatIndexC !== null && heatIndexC >= PAGASA_HEAT_INDEX_THRESHOLDS.dangerMin) {
+    return 'Extreme Heat';
+  }
+  if (heatIndexC !== null && heatIndexC >= PAGASA_HEAT_INDEX_THRESHOLDS.extremeCautionMin) {
+    return 'High Heat Index';
+  }
   if (c.includes('humid')) return 'High Humidity';
 
   return 'Extreme Heat';

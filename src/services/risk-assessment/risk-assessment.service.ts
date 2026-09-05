@@ -1,12 +1,12 @@
-import type { UserRiskFactors } from '@/src/models/user';
+import { primaryHealthCondition } from '@/src/constants/health-conditions';
+import { RISK_LEVEL_LABELS } from '@/src/constants/risk-levels';
 import type { HeatIndexReading } from '@/src/models/environmental';
-import type { CurrentWeatherSnapshot } from '@/src/models/weather';
 import type { UserLocation } from '@/src/models/location';
 import type { RiskAssessmentResult } from '@/src/models/risk';
-import { RISK_LEVEL_LABELS } from '@/src/constants/risk-levels';
+import type { UserRiskFactors } from '@/src/models/user';
+import type { CurrentWeatherSnapshot } from '@/src/models/weather';
 import { decisionTreeService } from '@/src/services/decision-tree/decision-tree.service';
 import { isUserProfileComplete } from '@/src/utils/validation';
-import { primaryHealthCondition } from '@/src/constants/health-conditions';
 
 /** Map app profile labels → decision tree training labels */
 function mapRiskFactorsForTree(riskFactors: UserRiskFactors): UserRiskFactors {

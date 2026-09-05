@@ -1,10 +1,9 @@
 import decisionTreeRules from '@/src/config/decision-tree.rules';
-import type { RiskAssessmentInput } from '@/src/models/risk';
+import type { HeatRiskLevel, RiskAssessmentInput } from '@/src/models/risk';
 import type { ServiceResult } from '@/src/models/service-result';
-import type { HeatRiskLevel } from '@/src/models/risk';
 import {
-  evaluateDecisionTree,
-  validateRulesDocument,
+    evaluateDecisionTree,
+    validateRulesDocument,
 } from './decision-tree.engine';
 
 export interface DecisionTreeOutput {

@@ -6,7 +6,7 @@ import {
 } from '@/src/constants/health-vulnerability';
 import type { DecisionTreeInput } from './decision-tree.types';
 
-const LEVEL_ORDER: HeatRiskLevel[] = ['LOW', 'MODERATE', 'HIGH', 'EXTREME'];
+const LEVEL_ORDER: HeatRiskLevel[] = ['LOW', 'MODERATE', 'HIGH', 'EXTREME', 'CRITICAL'];
 
 const NO_HEALTH_RISK = new Set([
   'none',
@@ -114,8 +114,8 @@ export function assessEnvironmentalRisk(
 ): { level: HeatRiskLevel; label: string; factors: string[] } {
   const { environmental } = riskAssessmentConfig;
   const band = environmental.heatIndexBands.find((b) => heatIndex < b.maxExclusive);
-  const baseLevel = band?.level ?? 'EXTREME';
-  const baseLabel = band?.label ?? 'Danger';
+  const baseLevel = band?.level ?? 'CRITICAL';
+  const baseLabel = band?.label ?? 'Extreme Danger';
   const factors: string[] = [
     `Heat index ${Math.round(heatIndex)}°C (${baseLabel} band)`,
   ];
@@ -203,6 +203,11 @@ export function combineRiskAssessment(params: {
   let finalIndex = levelIndex(environmentalLevel);
   const thresholds = combine[environmentalLevel];
 
+  if (thresholds.CRITICAL !== undefined && vulnerabilityScore >= thresholds.CRITICAL) {
+    if (levelIndex(environmentalLevel) >= levelIndex('EXTREME')) {
+      finalIndex = Math.max(finalIndex, levelIndex('CRITICAL'));
+    }
+  }
   if (thresholds.EXTREME !== undefined && vulnerabilityScore >= thresholds.EXTREME) {
     finalIndex = Math.max(finalIndex, levelIndex('EXTREME'));
   }
@@ -219,7 +224,7 @@ export function combineRiskAssessment(params: {
     input.hydrationStatus === 'Dehydrated' &&
     envAtLeast(criticalOverrides.dehydratedMinEnvironmental)
   ) {
-    finalIndex = levelIndex('EXTREME');
+    finalIndex = Math.max(finalIndex, levelIndex('EXTREME'));
   }
 
   if (
@@ -227,7 +232,7 @@ export function combineRiskAssessment(params: {
     healthMaxSeverity >= criticalOverrides.minHealthSeverityForActivityOverride &&
     envAtLeast(criticalOverrides.highActivityWithHealthMinEnvironmental)
   ) {
-    finalIndex = levelIndex('EXTREME');
+    finalIndex = Math.max(finalIndex, levelIndex('EXTREME'));
   }
 
   if (
@@ -235,14 +240,14 @@ export function combineRiskAssessment(params: {
     healthMaxSeverity >= criticalOverrides.minHealthSeverityForAgeOverride &&
     envAtLeast(criticalOverrides.elderlyWithHealthMinEnvironmental)
   ) {
-    finalIndex = levelIndex('EXTREME');
+    finalIndex = Math.max(finalIndex, levelIndex('EXTREME'));
   }
 
   if (
     input.generalStatus === 'Not Feeling Well' &&
     envAtLeast(criticalOverrides.notFeelingWellMinEnvironmental)
   ) {
-    finalIndex = levelIndex('EXTREME');
+    finalIndex = Math.max(finalIndex, levelIndex('EXTREME'));
   }
 
   return indexToLevel(finalIndex);
@@ -266,9 +271,13 @@ function buildReason(params: {
       ? 'Current environmental conditions are low risk'
       : environmentalLevel === 'MODERATE'
         ? 'Current heat conditions are moderate'
-        : environmentalLevel === 'HIGH'
-          ? 'Current heat conditions are high'
-          : 'Current heat conditions are extreme';
+      : environmentalLevel === 'HIGH'
+        ? 'Current heat conditions are in the extreme caution band'
+        : environmentalLevel === 'EXTREME'
+          ? 'Current heat conditions are in the danger band'
+          : environmentalLevel === 'CRITICAL'
+            ? 'Current heat conditions are in the extreme danger band'
+            : 'Current heat conditions are extreme';
 
   if (vulnerabilityFactors.length === 0) {
     return `Risk level: ${finalLevel}. ${envPhrase}, and no significant personal heat-risk factors were identified.`;

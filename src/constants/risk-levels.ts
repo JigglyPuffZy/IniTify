@@ -1,18 +1,21 @@
 import type { HeatRiskLevel } from '@/src/models/risk';
 
+/** PAGASA / NOAA heat-index band labels (DOST-PAGASA adapted from NWS NOAA). */
 export const RISK_LEVEL_LABELS: Record<HeatRiskLevel, string> = {
-  LOW: 'Low',
-  MODERATE: 'Moderate',
-  HIGH: 'High',
-  EXTREME: 'Extreme',
+  LOW: 'Below Caution',
+  MODERATE: 'Caution',
+  HIGH: 'Extreme Caution',
+  EXTREME: 'Danger',
+  CRITICAL: 'Extreme Danger',
 };
 
-/** Blue monochromatic scale — intensity conveys severity */
+/** Poster-aligned severity colors — yellow → orange → red scale. */
 export const RISK_LEVEL_COLORS: Record<HeatRiskLevel, string> = {
-  LOW: '#93C5FD',
-  MODERATE: '#60A5FA',
-  HIGH: '#3B82F6',
-  EXTREME: '#1D4ED8',
+  LOW: '#86EFAC',
+  MODERATE: '#FACC15',
+  HIGH: '#FB923C',
+  EXTREME: '#EA580C',
+  CRITICAL: '#DC2626',
 };
 
 export const DISCLAIMER =

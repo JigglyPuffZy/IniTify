@@ -28,6 +28,7 @@ const levelIcons: Record<HeatRiskLevel, React.ComponentProps<typeof Ionicons>['n
   MODERATE: 'alert-circle',
   HIGH: 'warning',
   EXTREME: 'flame',
+  CRITICAL: 'skull',
 };
 
 interface HomeOverviewProps {
