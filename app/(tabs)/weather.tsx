@@ -11,6 +11,7 @@ export default function WeatherTabScreen() {
     refreshHeatData,
     weatherRefreshSecondsLeft,
     isWeatherRefreshing,
+    heatDataSource,
   } = useIniTify();
   const { horizontalPadding } = useResponsive();
   const [refreshing, setRefreshing] = useState(false);
@@ -32,6 +33,7 @@ export default function WeatherTabScreen() {
       onRefresh={onRefresh}
       horizontalPadding={horizontalPadding}
       weatherRefreshSecondsLeft={weatherRefreshSecondsLeft}
+      heatDataSource={heatDataSource}
     />
   );
 }

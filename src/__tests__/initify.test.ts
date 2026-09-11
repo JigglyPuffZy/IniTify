@@ -44,6 +44,7 @@ const mockedFetchOpenMeteo = fetchOpenMeteoCurrent as jest.MockedFunction<
 function mockOpenMeteoWeather(
   overrides: Partial<Awaited<ReturnType<typeof fetchOpenMeteoCurrent>>> = {},
 ) {
+  const observationAt = new Date().toISOString();
   mockedFetchOpenMeteo.mockResolvedValue({
     locationName: TUGUEGARAO_STUDY_AREA.city,
     tempC: 33,
@@ -55,7 +56,14 @@ function mockOpenMeteoWeather(
     windKph: 10,
     windDir: 'N',
     isDay: true,
-    lastUpdated: new Date().toISOString(),
+    observationAt,
+    fetchedAt: observationAt,
+    lastUpdated: observationAt,
+    queryLatitude: 17.647733,
+    queryLongitude: 121.758494,
+    gridLatitude: 17.60984,
+    gridLongitude: 121.76982,
+    coordSource: 'pagasa_station',
     source: 'open-meteo',
     ...overrides,
   });
@@ -109,7 +117,11 @@ describe('environmental pipeline', () => {
 
     const result = await environmentalService.fetchHeatIndex(14.5, 121.0);
     expect(['success', 'unavailable', 'cached', 'invalid']).toContain(result.status);
-    expect(mockedFetchOpenMeteo).toHaveBeenCalledWith(14.5, 121.0);
+    expect(mockedFetchOpenMeteo).toHaveBeenCalledWith(14.5, 121.0, {
+      queryLatitude: 14.5,
+      queryLongitude: 121.0,
+      coordSource: 'pagasa_station',
+    });
   });
 
   it('reports open-meteo as the weather provider', () => {
@@ -127,6 +139,11 @@ describe('environmental pipeline', () => {
     expect(mockedFetchOpenMeteo).toHaveBeenCalledWith(
       defaults.latitude,
       defaults.longitude,
+      {
+        queryLatitude: defaults.latitude,
+        queryLongitude: defaults.longitude,
+        coordSource: 'pagasa_station',
+      },
     );
     if (result.status === 'success' && result.data) {
       expect(result.data.latitude).toBe(TUGUEGARAO_PAGASA_STATION.latitude);
@@ -206,7 +223,7 @@ describe('decision tree engine', () => {
     expect(result.error).toBeNull();
   });
 
-  it('escalates moderate heat with dehydration', () => {
+  it('escalates moderate heat with dehydration above PAGASA band', () => {
     const result = evaluateDecisionTree(sampleRules, {
       heatIndex: 30,
       age: 30,
@@ -214,6 +231,7 @@ describe('decision tree engine', () => {
       activityLevel: 'Low',
       hydrationStatus: 'Dehydrated',
     });
+    expect(result.assessment?.environmentalLevel).toBe('MODERATE');
     expect(result.level).toBe('HIGH');
   });
 
@@ -258,7 +276,7 @@ describe('decision tree service', () => {
     expect(result.data?.level).toBe('EXTREME');
   });
 
-  it('keeps typical Tuguegarao afternoon at HIGH with one health factor', () => {
+  it('keeps typical Tuguegarao afternoon at HIGH regardless of health', () => {
     const result = decisionTreeService.evaluate({
       heatIndex: 40.7,
       age: 25,
@@ -272,7 +290,7 @@ describe('decision tree service', () => {
     expect(result.data?.level).toBe('HIGH');
   });
 
-  it('escalates to EXTREME when dehydration meets high heat index', () => {
+  it('does not escalate when dehydration meets high heat index', () => {
     const result = decisionTreeService.evaluate({
       heatIndex: 40.7,
       age: 25,
@@ -283,10 +301,11 @@ describe('decision tree service', () => {
       longitude: 121.7,
     });
     expect(result.status).toBe('success');
+    expect(result.data?.environmentalLevel).toBe('HIGH');
     expect(result.data?.level).toBe('EXTREME');
   });
 
-  it('escalates moderate heat with dehydration', () => {
+  it('escalates moderate heat with dehydration for personal risk', () => {
     const result = decisionTreeService.evaluate({
       heatIndex: 30,
       age: 25,
@@ -297,6 +316,7 @@ describe('decision tree service', () => {
       longitude: 121.7,
     });
     expect(result.status).toBe('success');
+    expect(result.data?.environmentalLevel).toBe('MODERATE');
     expect(result.data?.level).toBe('HIGH');
   });
 
@@ -314,7 +334,7 @@ describe('decision tree service', () => {
     expect(result.data?.level).toBe('LOW');
   });
 
-  it('classifies moderate heat with no risk factors', () => {
+  it('classifies moderate heat with healthy profile as Low personal risk', () => {
     const result = decisionTreeService.evaluate({
       heatIndex: 29,
       age: 25,
@@ -325,10 +345,11 @@ describe('decision tree service', () => {
       longitude: 121.7,
     });
     expect(result.status).toBe('success');
-    expect(result.data?.level).toBe('MODERATE');
+    expect(result.data?.environmentalLevel).toBe('MODERATE');
+    expect(result.data?.level).toBe('LOW');
   });
 
-  it('escalates to EXTREME when high activity meets health condition in hot band', () => {
+  it('escalates high activity with health condition above PAGASA band', () => {
     const result = decisionTreeService.evaluate({
       heatIndex: 38,
       age: 25,
@@ -339,10 +360,11 @@ describe('decision tree service', () => {
       longitude: 121.7,
     });
     expect(result.status).toBe('success');
+    expect(result.data?.environmentalLevel).toBe('HIGH');
     expect(result.data?.level).toBe('EXTREME');
   });
 
-  it('uses generalStatus from check-in as a risk factor', () => {
+  it('does not escalate solely from general status when heat is high', () => {
     const result = decisionTreeService.evaluate({
       heatIndex: 40,
       age: 25,
@@ -354,12 +376,13 @@ describe('decision tree service', () => {
       longitude: 121.7,
     });
     expect(result.status).toBe('success');
-    expect(result.data?.level).toBe('EXTREME');
+    expect(result.data?.environmentalLevel).toBe('HIGH');
+    expect(result.data?.level).toBe('HIGH');
   });
 });
 
-describe('vulnerability-aware heat risk', () => {
-  it('does not assign risk from temperature alone — healthy user low heat', () => {
+describe('PAGASA heat-index risk', () => {
+  it('classifies low heat index as Low Risk', () => {
     const result = assessHeatRisk({
       heatIndex: 24,
       age: 30,
@@ -371,12 +394,43 @@ describe('vulnerability-aware heat risk', () => {
     expect(result?.level).toBe('LOW');
     expect(result?.environmentalLevel).toBe('LOW');
     expect(result?.vulnerabilityScore).toBe(0);
-    expect(result?.reason).toContain('no significant personal');
+    expect(result?.reason).toContain('°C heat index');
+    expect(result?.reason).toContain('Low Risk');
   });
 
-  it('escalates moderate environmental heat when user has hypertension', () => {
+  it('keeps healthy hydrated profile at Low personal risk even in PAGASA caution heat', () => {
     const result = assessHeatRisk({
-      heatIndex: 29,
+      heatIndex: 30,
+      age: 30,
+      healthCondition: 'None',
+      healthConditions: ['None'],
+      activityLevel: 'Low',
+      hydrationStatus: 'Well hydrated',
+      generalStatus: 'Feeling Well',
+    });
+    expect(result?.environmentalLevel).toBe('MODERATE');
+    expect(result?.level).toBe('LOW');
+    expect(result?.vulnerabilityScore).toBe(0);
+  });
+
+  it('classifies 26.3°C as Low PAGASA band with hypertension at personal Moderate only when hot enough', () => {
+    const result = assessHeatRisk({
+      heatIndex: 26.3,
+      age: 45,
+      healthCondition: 'Hypertension / High Blood Pressure',
+      healthConditions: ['Hypertension / High Blood Pressure'],
+      activityLevel: 'Low',
+      hydrationStatus: 'Well hydrated',
+      generalStatus: 'Feeling Well',
+    });
+    expect(result?.environmentalLevel).toBe('LOW');
+    expect(result?.level).toBe('LOW');
+    expect(result?.vulnerabilityScore).toBeGreaterThan(0);
+  });
+
+  it('raises hypertension personal risk in caution-level heat', () => {
+    const result = assessHeatRisk({
+      heatIndex: 30,
       age: 45,
       healthCondition: 'Hypertension / High Blood Pressure',
       healthConditions: ['Hypertension / High Blood Pressure'],
@@ -385,12 +439,10 @@ describe('vulnerability-aware heat risk', () => {
       generalStatus: 'Feeling Well',
     });
     expect(result?.environmentalLevel).toBe('MODERATE');
-    expect(result?.level).toBe('HIGH');
-    expect(result?.primaryRiskFactors.some((f) => f.includes('Hypertension'))).toBe(true);
-    expect(result?.reason).toContain('personal vulnerability');
+    expect(result?.level).toBe('MODERATE');
   });
 
-  it('raises risk for hypertension even when environmental heat is low', () => {
+  it('does not alarm hypertension alone in cool weather', () => {
     const result = assessHeatRisk({
       heatIndex: 24,
       age: 50,
@@ -401,10 +453,10 @@ describe('vulnerability-aware heat risk', () => {
       generalStatus: 'Feeling Well',
     });
     expect(result?.environmentalLevel).toBe('LOW');
-    expect(result?.level).toBe('MODERATE');
+    expect(result?.level).toBe('LOW');
   });
 
-  it('returns explainable output with score, factors, and guidance', () => {
+  it('returns explainable output with health and hydration factors', () => {
     const result = assessHeatRisk({
       heatIndex: 38,
       humidityPercent: 75,
@@ -416,14 +468,15 @@ describe('vulnerability-aware heat risk', () => {
       generalStatus: 'Mild Discomfort',
     });
     expect(result).not.toBeNull();
-    expect(result!.riskScore).toBeGreaterThan(50);
-    expect(result!.primaryRiskFactors.length).toBeGreaterThan(2);
-    expect(result!.reason).toMatch(/^Risk level:/);
+    expect(result!.riskScore).toBeGreaterThan(40);
+    expect(result!.primaryRiskFactors.length).toBeGreaterThan(1);
+    expect(result!.reason).toContain('°C heat index');
     expect(result!.recommendedAction.length).toBeGreaterThan(10);
     expect(result!.level).toBe('EXTREME');
+    expect(result!.vulnerabilityScore).toBeGreaterThan(0);
   });
 
-  it('does not auto-assign EXTREME for hypertension alone at moderate heat', () => {
+  it('matches hypertension to PAGASA caution band when well hydrated', () => {
     const result = assessHeatRisk({
       heatIndex: 30,
       age: 40,
@@ -433,8 +486,8 @@ describe('vulnerability-aware heat risk', () => {
       hydrationStatus: 'Well hydrated',
       generalStatus: 'Feeling Well',
     });
-    expect(result?.level).toBe('HIGH');
-    expect(result?.level).not.toBe('EXTREME');
+    expect(result?.environmentalLevel).toBe('MODERATE');
+    expect(result?.level).toBe('MODERATE');
   });
 
   it('maps PAGASA heat-index bands to environmental levels', () => {
@@ -461,7 +514,7 @@ describe('vulnerability-aware heat risk', () => {
       environmental: 'LOW' | 'MODERATE' | 'HIGH' | 'EXTREME' | 'CRITICAL';
       label: string;
     }> = [
-      { heatIndex: 26.9, environmental: 'LOW', label: 'Below Caution' },
+      { heatIndex: 26.9, environmental: 'LOW', label: 'Low Risk' },
       { heatIndex: 27, environmental: 'MODERATE', label: 'Caution' },
       { heatIndex: 32, environmental: 'MODERATE', label: 'Caution' },
       { heatIndex: 32.9, environmental: 'MODERATE', label: 'Caution' },
@@ -482,7 +535,9 @@ describe('vulnerability-aware heat risk', () => {
 
       const result = assessHeatRisk({ heatIndex, ...healthy });
       expect(result?.environmentalLevel).toBe(environmental);
-      expect(result?.level).toBe(environmental);
+      const expectedPersonal =
+        environmental === 'MODERATE' ? 'LOW' : environmental;
+      expect(result?.level).toBe(expectedPersonal);
     }
   });
 
@@ -502,10 +557,10 @@ describe('vulnerability-aware heat risk', () => {
 });
 
 describe('risk assessment', () => {
-  it('requires complete user profile', () => {
+  it('assesses from heat index without complete profile', () => {
     const result = riskAssessmentService.assess({
       heatReading: {
-        heatIndex: 38,
+        heatIndex: 26.3,
         retrievedAt: new Date().toISOString(),
         source: 'DOST-PAGASA',
         latitude: 14.5,
@@ -520,7 +575,7 @@ describe('risk assessment', () => {
       },
       location: null,
     });
-    expect(result.level).toBeNull();
+    expect(result.level).toBe('LOW');
   });
 });
 

@@ -1,13 +1,13 @@
-import { useEffect } from 'react';
-import { Platform } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useIniTify } from '@/src/context/IniTifyContext';
 import { useAuth } from '@/src/context/AuthContext';
+import { useIniTify } from '@/src/context/IniTifyContext';
 import { checkInService } from '@/src/services/check-in/check-in.service';
 import { reminderManager } from '@/src/services/check-in/reminder-manager.service';
-import { notificationService } from '@/src/services/notifications/notification.service';
-import { inAppNotificationService } from '@/src/services/notifications/in-app-notification.service';
 import { CHECK_IN_NOTIFICATION_TYPE } from '@/src/services/check-in/reminder-scheduler.service';
+import { inAppNotificationService } from '@/src/services/notifications/in-app-notification.service';
+import { notificationService } from '@/src/services/notifications/notification.service';
+import { useRouter } from 'expo-router';
+import { useEffect } from 'react';
+import { Platform } from 'react-native';
 
 /**
  * Wires phone notifications: request permission, open the right screen on tap,

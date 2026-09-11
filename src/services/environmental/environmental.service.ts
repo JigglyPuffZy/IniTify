@@ -7,9 +7,15 @@ import {
 } from './environmental-pipeline';
 import { offlineCacheService } from '@/src/services/offline-cache/offline-cache.service';
 import { fetchOpenMeteoCurrent } from './open-meteo-client';
+import type { OpenMeteoFetchContext } from './open-meteo-client';
 import { appConfig } from '@/src/config/app.config';
 import { TUGUEGARAO_STUDY_AREA } from '@/src/constants/study-area';
 import { defaultTuguegaraoWeatherCoords } from '@/src/utils/tuguegarao-weather-location';
+import {
+  formatWeatherLocationSource,
+  formatWeatherObservationTime,
+  normalizeWeatherSnapshot,
+} from '@/src/utils/weather-display';
 
 /**
  * Live weather and heat index for Tuguegarao via Open-Meteo (no API key).
@@ -31,13 +37,18 @@ export const environmentalService = {
   async fetchHeatIndex(
     latitude: number | null,
     longitude: number | null,
+    fetchContext?: Partial<OpenMeteoFetchContext>,
   ): Promise<EnvironmentalDataResult> {
     const defaults = defaultTuguegaraoWeatherCoords();
     const heatLatitude = latitude ?? defaults.latitude;
     const heatLongitude = longitude ?? defaults.longitude;
 
     try {
-      const weather = await fetchOpenMeteoCurrent(heatLatitude, heatLongitude);
+      const weather = await fetchOpenMeteoCurrent(heatLatitude, heatLongitude, {
+        queryLatitude: heatLatitude,
+        queryLongitude: heatLongitude,
+        coordSource: fetchContext?.coordSource ?? 'pagasa_station',
+      });
       const cleaned = cleanHeatIndexData({
         heatIndex: weather.heatIndexC,
         latitude: heatLatitude,
@@ -63,16 +74,17 @@ export const environmentalService = {
         status: 'success',
         data: reading,
         weather: weatherSnapshot,
-        message: `${weather.conditionText} · ${weather.tempC}°C in ${TUGUEGARAO_STUDY_AREA.city} · updated ${weather.lastUpdated}`,
+        message: `${weather.conditionText} · ${weather.heatIndexC}°C heat index · ${formatWeatherObservationTime(weather.observationAt)} · ${formatWeatherLocationSource(weather.coordSource)}`,
       };
     } catch (error) {
       const cached = await offlineCacheService.getLatestHeatReading();
       const cachedWeather = await offlineCacheService.getLatestWeather();
+      const normalizedWeather = cachedWeather ? normalizeWeatherSnapshot(cachedWeather) : null;
       if (cached) {
         return {
           status: 'cached',
           data: { ...cached, isCached: true },
-          weather: cachedWeather,
+          weather: normalizedWeather,
           message:
             error instanceof Error
               ? `${error.message} Showing last saved reading.`
@@ -80,11 +92,11 @@ export const environmentalService = {
         };
       }
 
-      if (cachedWeather) {
+      if (normalizedWeather) {
         return {
           status: 'cached',
           data: null,
-          weather: cachedWeather,
+          weather: normalizedWeather,
           message:
             error instanceof Error
               ? `${error.message} Showing last saved weather.`

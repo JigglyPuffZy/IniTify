@@ -1,5 +1,9 @@
 import { appConfig } from '@/src/config/app.config';
 import {
+  tifyGreetingLine,
+  type TifyLanguagePreference,
+} from '@/src/constants/tify-language-preference';
+import {
   ACTIVITY_LEVELS,
   GENERAL_STATUSES,
   HYDRATION_STATUSES,
@@ -14,11 +18,11 @@ import type {
   CheckInChatTurnResult,
 } from '@/src/models/check-in-chat';
 import {
-  buildTifySystemPrompt,
+  buildGuidedCheckInGreetingPrompt,
+  buildGuidedCheckInReplyPrompt,
   isEmergencyUserMessage,
   shouldOfferNearestHospital,
   TIFY_EMERGENCY_SCRIPT,
-  tifyQuickRepliesForDraft,
 } from './tify-system-prompt';
 import {
   buildSymptomContextForPrompt,
@@ -27,11 +31,10 @@ import {
   inferHydrationFromSymptoms,
 } from './tify-symptom-guide';
 import type { LiveWeatherFacts } from '@/src/utils/live-heat';
-import { formatHeatIndexC, formatTempC } from '@/src/utils/live-heat';
+import { formatHeatIndexC } from '@/src/utils/live-heat';
 import {
   classifyHydrationFromText,
   formatHydrationClassification,
-  WATER_INTAKE_QUICK_REPLIES,
 } from '@/src/utils/hydration-volume';
 import { logAiResponseTime } from '@/src/utils/network-latency-log';
 
@@ -118,16 +121,50 @@ function parseActivity(text: string): ActivityLevel | null {
 }
 
 function parseFeeling(text: string): GeneralStatus | null {
+  const matched = matchOption(text, GENERAL_STATUSES);
+  if (matched) return matched;
+
   const n = normalize(text);
-  if (/(not well|unwell|sick|bad|awful|terrible|worse)/.test(n)) return 'Not Feeling Well';
-  if (/(mild|discomfort|headache|nausea|tired|dizzy)/.test(n)) return 'Mild Discomfort';
-  if (/(well|good|fine|okay|ok|great|better)/.test(n)) return 'Feeling Well';
-  return matchOption(text, GENERAL_STATUSES);
+  if (
+    /(not feeling well|not well|unwell|sick|bad|awful|terrible|worse|hindi mabuti|masama ang pakiramdam|masama pakiramdam|ayaw maganda|hindi okay|di okay|di mabuti)/.test(
+      n,
+    )
+  ) {
+    return 'Not Feeling Well';
+  }
+  if (
+    /(mild discomfort|mild|discomfort|headache|nausea|tired|dizzy|nahihilo|hilo|masakit|sakit ng ulo|pagod|mahina)/.test(
+      n,
+    )
+  ) {
+    return 'Mild Discomfort';
+  }
+  if (
+    /\b(well|good|fine|okay|ok|great|better|mabuti|okay ako|maayos|maganda)\b/.test(n) &&
+    !/\b(not|hindi|di|ayaw|masama)\b/.test(n)
+  ) {
+    return 'Feeling Well';
+  }
+  return null;
+}
+
+/** Simple hydration chips for guided check-in (no cup math required). */
+const HYDRATION_QUICK_REPLIES: readonly HydrationStatus[] = [
+  'Well Hydrated',
+  'Needs Hydration',
+  'Dehydrated / Concerning',
+];
+
+function parseHydrationChoice(text: string): HydrationStatus | null {
+  const matched = matchOption(text, HYDRATION_STATUSES);
+  if (matched) return matched;
+  const parsed = parseHydration(text);
+  return parsed?.status ?? null;
 }
 
 function isSkipNotes(text: string): boolean {
   const n = normalize(text);
-  return /^(no|none|nope|nothing|skip|n\/a|na|all good|i'm good)$/.test(n);
+  return /^(no|none|nope|nothing|skip|n\/a|na|all good|i'm good|walang sintomas)$/.test(n);
 }
 
 function mergeDraftFromUserText(draft: CheckInChatDraft, userText: string): CheckInChatDraft {
@@ -167,28 +204,15 @@ function mergeDraftFromUserText(draft: CheckInChatDraft, userText: string): Chec
   };
 }
 
-function buildAiGreeting(profile: UserProfile, weather: LiveWeatherFacts | null): string {
-  const firstName = profile.name.split(' ')[0] || profile.name;
-  const heat = weather?.heatIndexLabel ?? formatHeatIndexC(weather?.heatIndexC ?? null);
-  const temp = weather?.tempLabel ?? formatTempC(weather?.tempC ?? null);
-  if (heat != null && temp != null) {
-    return `Hi ${firstName}. I'm Tify, your personal AI companion for heat safety. Right now in Tuguegarao it's ${temp}°C (air) with a heat index of ${heat}°C — same as your Home dashboard.`;
-  }
-  if (heat != null) {
-    return `Hi ${firstName}. I'm Tify, your personal AI companion for heat safety. Current heat index is ${heat}°C (same as your Home dashboard).`;
-  }
-  return `Hi ${firstName}. I'm Tify, your personal AI companion for heat safety.`;
-}
-
 function buildSummary(draft: CheckInChatDraft): string {
   const hydrationLine =
     draft.waterIntakeLiters != null
       ? `Hydration: ${draft.hydrationStatus ?? '—'} (${draft.waterIntakeLiters} L today)`
       : `Hydration: ${draft.hydrationStatus ?? '—'}`;
   return [
-    hydrationLine,
-    `Activity: ${draft.activityLevel ?? '—'}`,
     `How you feel: ${draft.generalStatus ?? '—'}`,
+    `Activity: ${draft.activityLevel ?? '—'}`,
+    hydrationLine,
     draft.notes ? `Notes: ${draft.notes}` : null,
   ]
     .filter(Boolean)
@@ -198,28 +222,24 @@ function buildSummary(draft: CheckInChatDraft): string {
 function greetingMessage(
   profile: UserProfile,
   weather: LiveWeatherFacts | null,
-  usesAi: boolean,
+  languagePreference: TifyLanguagePreference,
 ): CheckInChatMessage {
   const firstName = profile.name.split(' ')[0] || profile.name;
-  const intro = usesAi
-    ? buildAiGreeting(profile, weather)
-    : `Hi ${firstName}. I'm Tify, your personal AI companion for heat safety.`;
-
-  const waterPrompt =
-    '\n\nHow much water have you drunk so far today? Tell me in cups or liters (e.g. 4 cups or 1 L).';
-  return msg('assistant', intro + waterPrompt);
+  const heat = weather?.heatIndexLabel ?? formatHeatIndexC(weather?.heatIndexC ?? null);
+  return msg('assistant', tifyGreetingLine(firstName, heat, languagePreference));
 }
 
 function stepQuickReplies(step: CheckInChatDraft['step']): string[] | undefined {
   switch (step) {
-    case 'hydration':
-      return [...WATER_INTAKE_QUICK_REPLIES];
-    case 'activity':
-      return [...ACTIVITY_LEVELS];
+    case 'greeting':
     case 'feeling':
       return [...GENERAL_STATUSES];
+    case 'activity':
+      return [...ACTIVITY_LEVELS];
+    case 'hydration':
+      return [...HYDRATION_QUICK_REPLIES];
     case 'notes':
-      return ['No symptoms', 'Sakit ng ulo', 'Nahihilo', 'Masakit katawan'];
+      return ['Walang sintomas', 'Sakit ng ulo', 'Nahihilo', 'Masakit katawan'];
     case 'confirm':
       return ['Save check-in', 'Start over'];
     default:
@@ -229,26 +249,27 @@ function stepQuickReplies(step: CheckInChatDraft['step']): string[] | undefined 
 
 function advanceScriptedTurn(userText: string, draft: CheckInChatDraft): CheckInChatTurnResult {
   const text = userText.trim();
+  const step = draft.step === 'greeting' ? 'feeling' : draft.step;
 
-  if (draft.step === 'confirm') {
-    if (/start over|restart|reset/.test(normalize(text))) {
-      const reset: CheckInChatDraft = { step: 'hydration' };
+  if (step === 'confirm') {
+    if (/start over|restart|reset|ulit/.test(normalize(text))) {
+      const reset: CheckInChatDraft = { step: 'feeling' };
       return {
         assistantMessage: msg(
           'assistant',
-          "No problem — let's start fresh. How much water have you drunk so far today? (cups or liters)",
+          'Sige, magsimula ulit tayo. Kamusta ka ngayon sa init?',
         ),
         draft: reset,
-        quickReplies: stepQuickReplies('hydration'),
+        quickReplies: stepQuickReplies('feeling'),
         readyToSave: false,
         usesAi: false,
       };
     }
-    if (/save|yes|confirm|ok|okay|done/.test(normalize(text))) {
+    if (/save|yes|confirm|ok|okay|done|sige|save check-in/.test(normalize(text))) {
       return {
         assistantMessage: msg(
           'assistant',
-          'Perfect — saving your check-in now. Stay cool and hydrated!',
+          'Saved na ang check-in mo. Stay cool at hydrated!',
         ),
         draft: { ...draft, step: 'done' },
         readyToSave: true,
@@ -257,49 +278,47 @@ function advanceScriptedTurn(userText: string, draft: CheckInChatDraft): CheckIn
     }
   }
 
-  if (draft.step === 'greeting' || draft.step === 'hydration') {
-    const hydration = parseHydration(text);
-    if (!hydration) {
+  if (step === 'feeling') {
+    const feeling = parseFeeling(text);
+    if (!feeling) {
       return {
         assistantMessage: msg(
           'assistant',
-          "I didn't quite catch that. How much water have you had today? Example: 4 cups (1 L) or 2 liters.",
+          'Pili lang: Okay ako, Medyo hindi okay, o Hindi maganda ang pakiramdam?',
         ),
-        draft: { ...draft, step: 'hydration' },
-        quickReplies: stepQuickReplies('hydration'),
+        draft: { ...draft, step: 'feeling' },
+        quickReplies: stepQuickReplies('feeling'),
         readyToSave: false,
         usesAi: false,
       };
     }
-    const hydrationAck = hydration.classificationLine
-      ? hydration.classificationLine
-      : `Got it — ${hydration.status.toLowerCase()}.`;
+    const ack =
+      feeling === 'Feeling Well'
+        ? 'Okay — glad you\'re feeling well.'
+        : feeling === 'Mild Discomfort'
+          ? 'Noted — mild discomfort. Ingat sa init.'
+          : 'Salamat sa pag-share. Ingat ka — kung lumala, hanap ng shade at tubig.';
     return {
       assistantMessage: msg(
         'assistant',
-        `${hydrationAck}\n\nWhat activity level have you had today?`,
+        `${ack}\n\nAnong activity level mo ngayon? Low, moderate, o high?`,
       ),
-      draft: {
-        ...draft,
-        step: 'activity',
-        hydrationStatus: hydration.status,
-        waterIntakeLiters: hydration.liters,
-      },
+      draft: { ...draft, step: 'activity', generalStatus: feeling },
       quickReplies: stepQuickReplies('activity'),
       readyToSave: false,
       usesAi: false,
     };
   }
 
-  if (draft.step === 'activity') {
+  if (step === 'activity') {
     const activity = parseActivity(text);
     if (!activity) {
       return {
         assistantMessage: msg(
           'assistant',
-          'Was your activity mostly low, moderate, or high today?',
+          'Activity mo ngayon — low, moderate, o high?',
         ),
-        draft,
+        draft: { ...draft, step: 'activity' },
         quickReplies: stepQuickReplies('activity'),
         readyToSave: false,
         usesAi: false,
@@ -308,43 +327,49 @@ function advanceScriptedTurn(userText: string, draft: CheckInChatDraft): CheckIn
     return {
       assistantMessage: msg(
         'assistant',
-        `${activity} activity — noted.\n\nHow are you feeling overall right now?`,
+        `${activity} activity — noted.\n\nKumusta ang hydration mo? Hydrated ka ba, kailangan ng tubig, o dehydrated?`,
       ),
-      draft: { ...draft, step: 'feeling', activityLevel: activity },
-      quickReplies: stepQuickReplies('feeling'),
+      draft: { ...draft, step: 'hydration', activityLevel: activity },
+      quickReplies: stepQuickReplies('hydration'),
       readyToSave: false,
       usesAi: false,
     };
   }
 
-  if (draft.step === 'feeling') {
-    const feeling = parseFeeling(text);
-    if (!feeling) {
+  if (step === 'hydration') {
+    const hydration = parseHydrationChoice(text);
+    if (!hydration) {
       return {
         assistantMessage: msg(
           'assistant',
-          'Are you feeling well, mild discomfort, or not feeling well?',
+          'Pili lang: Hydrated, Kailangan ng tubig, o Dehydrated?',
         ),
-        draft,
-        quickReplies: stepQuickReplies('feeling'),
+        draft: { ...draft, step: 'hydration' },
+        quickReplies: stepQuickReplies('hydration'),
         readyToSave: false,
         usesAi: false,
       };
     }
+    const parsedVolume = parseHydration(text);
     return {
       assistantMessage: msg(
         'assistant',
-        `Thanks for sharing.\n\nAno ang masakit o anong nararamdaman mo sa init? (headache, dizziness, nausea — or say "none")`,
+        `Hydration: ${hydration}.\n\nMay nararamdaman ka bang sintomas sa init? (headache, nahihilo — o wala)`,
       ),
-      draft: { ...draft, step: 'notes', generalStatus: feeling },
+      draft: {
+        ...draft,
+        step: 'notes',
+        hydrationStatus: hydration,
+        waterIntakeLiters: parsedVolume?.liters ?? draft.waterIntakeLiters,
+      },
       quickReplies: stepQuickReplies('notes'),
       readyToSave: false,
       usesAi: false,
     };
   }
 
-  if (draft.step === 'notes') {
-    const notes = isSkipNotes(text) ? '' : text;
+  if (step === 'notes') {
+    const notes = isSkipNotes(text) || /^walang sintomas$/i.test(normalize(text)) ? '' : text;
     const nextDraft: CheckInChatDraft = {
       ...draft,
       step: 'confirm',
@@ -353,7 +378,7 @@ function advanceScriptedTurn(userText: string, draft: CheckInChatDraft): CheckIn
     return {
       assistantMessage: msg(
         'assistant',
-        `Here's your check-in summary:\n\n${buildSummary(nextDraft)}\n\nTap Save check-in when this looks right, or Start over to redo.`,
+        `Ito ang summary:\n\n${buildSummary(nextDraft)}\n\nTap Save check-in kapag okay na.`,
       ),
       draft: nextDraft,
       quickReplies: stepQuickReplies('confirm'),
@@ -363,7 +388,7 @@ function advanceScriptedTurn(userText: string, draft: CheckInChatDraft): CheckIn
   }
 
   return {
-    assistantMessage: msg('assistant', 'Your check-in is ready — tap Save check-in below.'),
+    assistantMessage: msg('assistant', 'Ready na — tap Save check-in sa baba.'),
     draft,
     quickReplies: stepQuickReplies('confirm'),
     readyToSave: false,
@@ -371,67 +396,14 @@ function advanceScriptedTurn(userText: string, draft: CheckInChatDraft): CheckIn
   };
 }
 
-const CHECK_IN_DATA_RE = /CHECK_IN_DATA:\s*(\{[\s\S]*?\})/i;
-
-function parseAiExtract(content: string): {
-  display: string;
-  data: Partial<CheckInChatDraft> | null;
-} {
-  const match = content.match(CHECK_IN_DATA_RE);
-  if (!match) {
-    return { display: content.trim(), data: null };
-  }
-
-  const display = content.replace(CHECK_IN_DATA_RE, '').trim();
-  try {
-    const raw = JSON.parse(match[1]) as Record<string, string | boolean>;
-    const draft: Partial<CheckInChatDraft> = {};
-    if (raw.hydrationStatus) draft.hydrationStatus = raw.hydrationStatus as HydrationStatus;
-    if (raw.activityLevel) draft.activityLevel = raw.activityLevel as ActivityLevel;
-    if (raw.generalStatus) draft.generalStatus = raw.generalStatus as GeneralStatus;
-    if (raw.notes) draft.notes = String(raw.notes);
-    if (raw.readyToSave === true || raw.readyToSave === 'true') draft.step = 'done';
-    return { display: display || 'Thanks — I updated your check-in.', data: draft };
-  } catch {
-    return { display: content.trim(), data: null };
-  }
-}
-
-function buildAiSystemPrompt(
-  profile: UserProfile,
-  heatIndexC: number | null,
-  riskLevel: string | null,
-  draft: CheckInChatDraft,
-  userText: string,
-  weather: LiveWeatherFacts | null,
-): string {
-  return buildTifySystemPrompt({
-    profile,
-    heatIndexC: weather?.heatIndexC ?? heatIndexC,
-    riskLevel,
-    draft,
-    latestUserMessage: userText,
-    symptomContext: buildSymptomContextForPrompt({ userText, profile }),
-    weather,
-  });
-}
-
-async function callCheckInAi(params: {
-  profile: UserProfile;
-  heatIndexC: number | null;
-  riskLevel: string | null;
-  draft: CheckInChatDraft;
-  messages: CheckInChatMessage[];
-  userText: string;
-  weather: LiveWeatherFacts | null;
-}): Promise<string | null> {
+async function callTifyAi(systemPrompt: string, messages: CheckInChatMessage[]): Promise<string | null> {
   const apiKey = appConfig.checkInAiApiKey;
   if (!apiKey) return null;
 
   const baseUrl = appConfig.checkInAiBaseUrl ?? 'https://api.openai.com/v1';
   const model = appConfig.checkInAiModel ?? 'gpt-4o-mini';
-
   const startedAt = Date.now();
+
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
@@ -440,26 +412,17 @@ async function callCheckInAi(params: {
     },
     body: JSON.stringify({
       model,
-      temperature: 0.7,
-      frequency_penalty: 0.4,
-      presence_penalty: 0.3,
-      max_tokens: 720,
+      temperature: 0.75,
+      frequency_penalty: 0.35,
+      presence_penalty: 0.25,
+      max_tokens: 320,
       messages: [
-        {
-          role: 'system',
-          content: buildAiSystemPrompt(
-            params.profile,
-            params.heatIndexC,
-            params.riskLevel,
-            params.draft,
-            params.userText,
-            params.weather,
-          ),
-        },
-        ...params.messages.map((m) => ({ role: m.role, content: m.content })),
+        { role: 'system', content: systemPrompt },
+        ...messages.slice(-8).map((m) => ({ role: m.role, content: m.content })),
       ],
     }),
   });
+
   logAiResponseTime({
     endpoint: 'check-in-ai',
     durationMs: Date.now() - startedAt,
@@ -467,15 +430,47 @@ async function callCheckInAi(params: {
     status: response.status,
   });
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(errText || `AI request failed (${response.status})`);
-  }
+  if (!response.ok) return null;
 
   const json = (await response.json()) as {
     choices?: { message?: { content?: string } }[];
   };
-  return json.choices?.[0]?.message?.content?.trim() ?? null;
+  const text = json.choices?.[0]?.message?.content?.trim();
+  return text && text.length > 0 ? text : null;
+}
+
+async function adaptAssistantReply(params: {
+  profile: UserProfile;
+  heatIndexC: number | null;
+  riskLevel: string | null;
+  weather: LiveWeatherFacts | null;
+  messages: CheckInChatMessage[];
+  userText: string;
+  scripted: CheckInChatTurnResult;
+  languagePreference: TifyLanguagePreference;
+}): Promise<string | null> {
+  if (!appConfig.checkInAiApiKey) return null;
+
+  const prompt = buildGuidedCheckInReplyPrompt({
+    profile: params.profile,
+    heatIndexC: params.weather?.heatIndexC ?? params.heatIndexC,
+    riskLevel: params.riskLevel,
+    draft: params.scripted.draft,
+    userText: params.userText,
+    weather: params.weather,
+    fallbackReply: params.scripted.assistantMessage.content,
+    chatHistory: [
+      ...params.messages,
+      { id: 'latest-user', role: 'user', content: params.userText, createdAt: nowIso() },
+    ],
+    languagePreference: params.languagePreference,
+  });
+
+  try {
+    return await callTifyAi(prompt, params.messages);
+  } catch {
+    return null;
+  }
 }
 
 export const checkInChatService = {
@@ -484,7 +479,7 @@ export const checkInChatService = {
   },
 
   getStarterQuickReplies(): string[] {
-    return [...WATER_INTAKE_QUICK_REPLIES];
+    return [...GENERAL_STATUSES];
   },
 
   /** Exposed for tests — applies user text to check-in draft (volume parse wins). */
@@ -496,9 +491,9 @@ export const checkInChatService = {
     profile: UserProfile,
     heatIndexC: number | null,
     weather: LiveWeatherFacts | null = null,
-  ): { messages: CheckInChatMessage[]; draft: CheckInChatDraft } {
-    const usesAi = this.isAiConfigured();
-    const draft: CheckInChatDraft = { step: usesAi ? 'greeting' : 'hydration' };
+    languagePreference: TifyLanguagePreference = 'taglish',
+  ): { messages: CheckInChatMessage[]; draft: CheckInChatDraft; quickReplies: string[] } {
+    const draft: CheckInChatDraft = { step: 'feeling' };
     const facts =
       weather ??
       ({
@@ -512,9 +507,30 @@ export const checkInChatService = {
         feelsLikeLabel: null,
       } satisfies LiveWeatherFacts);
     return {
-      messages: [greetingMessage(profile, facts, usesAi)],
+      messages: [greetingMessage(profile, facts, languagePreference)],
       draft,
+      quickReplies: stepQuickReplies('feeling') ?? [],
     };
+  },
+
+  async enrichGreeting(
+    profile: UserProfile,
+    heatIndexC: number | null,
+    weather: LiveWeatherFacts | null = null,
+    languagePreference: TifyLanguagePreference = 'taglish',
+  ): Promise<string | null> {
+    if (!this.isAiConfigured()) return null;
+    const prompt = buildGuidedCheckInGreetingPrompt({
+      profile,
+      weather,
+      heatIndexC,
+      languagePreference,
+    });
+    try {
+      return await callTifyAi(prompt, []);
+    } catch {
+      return null;
+    }
   },
 
   async sendUserMessage(params: {
@@ -525,8 +541,8 @@ export const checkInChatService = {
     messages: CheckInChatMessage[];
     userText: string;
     weather?: LiveWeatherFacts | null;
+    languagePreference: TifyLanguagePreference;
   }): Promise<CheckInChatTurnResult> {
-    const history = params.messages;
     const weather =
       params.weather ??
       ({
@@ -542,106 +558,74 @@ export const checkInChatService = {
 
     const ctaParams = { userText: params.userText, riskLevel: params.riskLevel };
 
-    // No AI key: keep a clear fixed emergency line + hospital CTA.
-    // With AI: let the model write a situational urgent reply (still show hospital CTA).
-    if (!this.isAiConfigured() && isEmergencyUserMessage(params.userText)) {
+    if (isEmergencyUserMessage(params.userText)) {
+      let emergencyText = TIFY_EMERGENCY_SCRIPT;
+      if (this.isAiConfigured()) {
+        const adapted = await adaptAssistantReply({
+          profile: params.profile,
+          heatIndexC: params.heatIndexC,
+          riskLevel: params.riskLevel,
+          weather,
+          messages: params.messages,
+          userText: params.userText,
+          scripted: {
+            assistantMessage: msg('assistant', TIFY_EMERGENCY_SCRIPT),
+            draft: params.draft,
+            readyToSave: false,
+            usesAi: false,
+            quickReplies: stepQuickReplies(params.draft.step),
+          },
+          languagePreference: params.languagePreference,
+        });
+        if (adapted) emergencyText = adapted;
+      }
+
       return withHospitalCta(
         {
-          assistantMessage: msg('assistant', TIFY_EMERGENCY_SCRIPT),
+          assistantMessage: msg('assistant', emergencyText),
           draft: params.draft,
           readyToSave: false,
-          usesAi: false,
-          quickReplies: undefined,
+          usesAi: this.isAiConfigured(),
+          quickReplies: stepQuickReplies(params.draft.step),
           showHospitalCta: true,
         },
         ctaParams,
       );
     }
 
+    const draftWithUser = mergeDraftFromUserText(params.draft, params.userText);
+    const normalizedStep = draftWithUser.step === 'greeting' ? 'feeling' : draftWithUser.step;
+    const scripted = advanceScriptedTurn(params.userText, {
+      ...draftWithUser,
+      step: normalizedStep,
+    });
+
+    let assistantContent = scripted.assistantMessage.content;
+    let usesAi = false;
+
     if (this.isAiConfigured()) {
-      const draftWithUser = mergeDraftFromUserText(params.draft, params.userText);
-
-      try {
-        const aiContent = await callCheckInAi({
-          profile: params.profile,
-          heatIndexC: weather.heatIndexC ?? params.heatIndexC,
-          riskLevel: params.riskLevel,
-          draft: draftWithUser,
-          messages: history,
-          userText: params.userText,
-          weather,
-        });
-
-        if (aiContent) {
-          const { display, data } = parseAiExtract(aiContent);
-          const merged: CheckInChatDraft = {
-            ...draftWithUser,
-            // Local volume/keyword parse wins over AI JSON — keeps Tify aligned with saved status.
-            hydrationStatus: draftWithUser.hydrationStatus ?? data?.hydrationStatus,
-            activityLevel: draftWithUser.activityLevel ?? data?.activityLevel,
-            generalStatus: draftWithUser.generalStatus ?? data?.generalStatus,
-            notes: draftWithUser.notes ?? data?.notes,
-            step: data?.step ?? draftWithUser.step,
-          };
-
-          const readyToSave =
-            merged.step === 'done' ||
-            Boolean(
-              merged.hydrationStatus &&
-                merged.activityLevel &&
-                merged.generalStatus &&
-                /readyToSave["']?\s*:\s*true/i.test(aiContent),
-            );
-
-          if (readyToSave) merged.step = 'done';
-
-          return withHospitalCta(
-            {
-              assistantMessage: msg('assistant', display),
-              draft: merged,
-              readyToSave,
-              usesAi: true,
-              quickReplies: readyToSave
-                ? ['Save check-in']
-                : tifyQuickRepliesForDraft(merged, { aiMode: true }),
-              showHospitalCta: isEmergencyUserMessage(params.userText) ? true : undefined,
-            },
-            ctaParams,
-          );
-        }
-      } catch {
-        const fallback = advanceScriptedTurn(params.userText, {
-          ...draftWithUser,
-          step: draftWithUser.hydrationStatus ? draftWithUser.step : 'hydration',
-        });
-        return withHospitalCta(
-          {
-            ...fallback,
-            assistantMessage: msg(
-              'assistant',
-              "I'm having trouble reaching the AI right now — let's continue with quick options instead.\n\n" +
-                fallback.assistantMessage.content,
-            ),
-            usesAi: false,
-          },
-          ctaParams,
-        );
-      }
-
-      const scripted = advanceScriptedTurn(params.userText, {
-        ...draftWithUser,
-        step: draftWithUser.hydrationStatus ? draftWithUser.step : 'hydration',
+      const adapted = await adaptAssistantReply({
+        profile: params.profile,
+        heatIndexC: params.heatIndexC,
+        riskLevel: params.riskLevel,
+        weather,
+        messages: params.messages,
+        userText: params.userText,
+        scripted,
+        languagePreference: params.languagePreference,
       });
-      return withHospitalCta({ ...scripted, usesAi: false }, ctaParams);
+      if (adapted) {
+        assistantContent = adapted;
+        usesAi = true;
+      }
     }
 
-    const draftWithUser = mergeDraftFromUserText(params.draft, params.userText);
-    return withHospitalCta(
-      advanceScriptedTurn(params.userText, {
-        ...draftWithUser,
-        step: draftWithUser.hydrationStatus ? draftWithUser.step : 'hydration',
-      }),
-      ctaParams,
-    );
+    const result: CheckInChatTurnResult = {
+      ...scripted,
+      assistantMessage: msg('assistant', assistantContent),
+      usesAi,
+    };
+
+    return withHospitalCta(result, ctaParams);
   },
 };

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { HeatRiskLevel } from '@/src/models/risk';
-import { RISK_LEVEL_COLORS, RISK_LEVEL_LABELS } from '@/src/constants/risk-levels';
+import { RISK_LEVEL_COLORS, RISK_LEVEL_LABELS, RISK_LEVEL_SHORT_LABELS, riskLevelLabelFontSize } from '@/src/constants/risk-levels';
 import { radius, spacing, typography } from '@/src/theme';
 import { useAppTheme } from '@/src/theme/useAppTheme';
 import type { AppPalette } from '@/src/theme/palettes';
@@ -40,29 +40,41 @@ export function RiskLevelBadge({ level, size = 'large', message }: RiskLevelBadg
           <Ionicons name="thermometer-outline" size={24} color={palette.textSecondary} />
         </View>
         <Text style={styles.emptyTitle}>Heat risk not checked</Text>
-        <Text style={styles.emptyHint}>Run a check to see your personalized risk level</Text>
+        <Text style={styles.emptyHint}>Pull down on Home to refresh live weather</Text>
       </View>
     );
   }
 
   const color = RISK_LEVEL_COLORS[level];
+  const label = RISK_LEVEL_LABELS[level];
 
   if (size === 'small') {
     return (
       <View style={[styles.pill, { backgroundColor: `${color}22`, borderColor: `${color}55` }]}>
         <Ionicons name={levelIcons[level]} size={13} color={color} />
-        <Text style={[styles.pillText, { color }]}>{RISK_LEVEL_LABELS[level]}</Text>
+        <Text style={[styles.pillText, { color }]} numberOfLines={1}>
+          {RISK_LEVEL_SHORT_LABELS[level]}
+        </Text>
       </View>
     );
   }
+
+  const labelSize = riskLevelLabelFontSize(label, 26);
 
   return (
     <View style={[styles.card, { borderColor: `${color}40`, backgroundColor: `${color}12` }]}>
       <View style={[styles.iconWrap, { backgroundColor: color }]}>
         <Ionicons name={levelIcons[level]} size={24} color="#FFFFFF" />
       </View>
-      <Text style={[styles.levelLabel, { color }]}>{RISK_LEVEL_LABELS[level]}</Text>
-      <Text style={styles.levelCaption}>Heat risk level</Text>
+      <Text
+        style={[styles.levelLabel, { color, fontSize: labelSize, lineHeight: labelSize + 4 }]}
+        numberOfLines={2}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
+      >
+        {label}
+      </Text>
+      <Text style={styles.levelCaption}>Heat index band</Text>
       {message ? <Text style={styles.message}>{message}</Text> : null}
     </View>
   );
@@ -72,7 +84,10 @@ function createStyles(p: AppPalette) {
   return StyleSheet.create({
     card: {
       alignItems: 'center',
+      alignSelf: 'stretch',
+      width: '100%',
       padding: spacing.xl,
+      paddingHorizontal: spacing.lg,
       borderRadius: radius.lg,
       borderWidth: 1,
       gap: spacing.sm,
@@ -86,9 +101,11 @@ function createStyles(p: AppPalette) {
       marginBottom: spacing.xs,
     },
     levelLabel: {
-      fontSize: 28,
       fontWeight: '700',
       letterSpacing: -0.5,
+      textAlign: 'center',
+      maxWidth: '100%',
+      paddingHorizontal: spacing.sm,
     },
     levelCaption: {
       ...typography.caption,
@@ -133,7 +150,7 @@ function createStyles(p: AppPalette) {
       borderRadius: radius.pill,
       borderWidth: 1,
     },
-    pillText: { fontSize: 12, fontWeight: '700' },
+    pillText: { fontSize: 11, fontWeight: '700', flexShrink: 1 },
     pillEmpty: {
       flexDirection: 'row',
       alignItems: 'center',

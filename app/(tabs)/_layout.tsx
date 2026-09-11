@@ -1,5 +1,5 @@
 import { Redirect, Tabs } from 'expo-router';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View, type ColorValue } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LoadingState } from '@/src/components/ScreenContainer';
 import { useAuth } from '@/src/context/AuthContext';
@@ -21,7 +21,7 @@ function TabIcon({
   wrapHeight,
 }: {
   name: IconName;
-  color: string;
+  color: ColorValue;
   size: number;
   focused?: boolean;
   accent?: string;

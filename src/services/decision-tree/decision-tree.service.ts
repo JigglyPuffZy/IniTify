@@ -70,10 +70,6 @@ export const decisionTreeService = {
 
     const missing: string[] = [];
     if (input.heatIndex === null) missing.push('heatIndex');
-    if (input.age === null) missing.push('age');
-    if (!input.healthCondition) missing.push('healthCondition');
-    if (!input.activityLevel) missing.push('activityLevel');
-    if (!input.hydrationStatus) missing.push('hydrationStatus');
 
     if (missing.length > 0) {
       return {

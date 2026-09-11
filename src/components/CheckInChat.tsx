@@ -1,48 +1,53 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import type { UserProfile } from '@/src/models/user';
-import type { HeatRiskLevel } from '@/src/models/risk';
-import type { UserLocation } from '@/src/models/location';
+import { BrandMark } from '@/src/components/auth/BrandMark';
+import { RISK_LEVEL_COLORS, RISK_LEVEL_SHORT_LABELS } from '@/src/constants/risk-levels';
+import { tifyChipLabel, type TifyLanguagePreference } from '@/src/constants/tify-language-preference';
 import type { CheckInChatDraft, CheckInChatMessage, CheckInChatStep } from '@/src/models/check-in-chat';
+import type { UserLocation } from '@/src/models/location';
+import type { HeatRiskLevel } from '@/src/models/risk';
+import type { UserProfile } from '@/src/models/user';
 import { checkInChatService } from '@/src/services/check-in/check-in-chat.service';
 import { hospitalService, type HospitalInfo } from '@/src/services/hospital/hospital.service';
 import { locationService } from '@/src/services/location/location.service';
-import { resolveHospitalSearchLocation } from '@/src/utils/hospital-location';
-import { BrandMark } from '@/src/components/auth/BrandMark';
-import { useAppTheme } from '@/src/theme/useAppTheme';
-import { cardShadow, fonts, layout, radius, spacing, typography } from '@/src/theme';
+import { fonts, radius, spacing, typography } from '@/src/theme';
+import { cardShadow } from '@/src/theme/shadows';
 import type { AppPalette } from '@/src/theme/palettes';
-import { getHeroGradient } from '@/src/theme/palettes';
+import { useAppTheme } from '@/src/theme/useAppTheme';
+import { resolveHospitalSearchLocation } from '@/src/utils/hospital-location';
 import type { LiveWeatherFacts } from '@/src/utils/live-heat';
 import { useResponsive, type ResponsiveMetrics } from '@/src/utils/responsive';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    FlatList,
+    Keyboard,
+    KeyboardAvoidingView,
+    Linking,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ASSISTANT_NAME = 'Tify';
 
 const CHECK_IN_STEPS: { key: CheckInChatStep; label: string; shortLabel: string }[] = [
-  { key: 'hydration', label: 'Hydration', shortLabel: 'Water' },
-  { key: 'activity', label: 'Activity', shortLabel: 'Active' },
   { key: 'feeling', label: 'Feeling', shortLabel: 'Feel' },
+  { key: 'activity', label: 'Activity', shortLabel: 'Active' },
+  { key: 'hydration', label: 'Hydration', shortLabel: 'Water' },
 ];
 
 function stepIndex(step: CheckInChatStep): number {
-  if (step === 'greeting' || step === 'hydration') return 0;
+  if (step === 'greeting' || step === 'feeling') return 0;
   if (step === 'activity') return 1;
-  if (step === 'feeling' || step === 'notes' || step === 'confirm' || step === 'done') return 2;
+  if (step === 'hydration') return 2;
+  if (step === 'notes' || step === 'confirm' || step === 'done') return 2;
   return 0;
 }
 
@@ -58,15 +63,13 @@ function normalizeQuickReply(text: string): string {
   return map[text] ?? text;
 }
 
-function chipDisplayLabel(reply: string): string {
-  if (reply === 'Dehydrated / Concerning') return 'Dehydrated';
-  if (reply === 'Needs Hydration') return 'Needs water';
-  if (reply === 'Well Hydrated') return 'Well hydrated';
-  return reply;
+function chipDisplayLabel(reply: string, languagePreference: TifyLanguagePreference): string {
+  return tifyChipLabel(reply, languagePreference);
 }
 
 interface CheckInChatProps {
   profile: UserProfile;
+  languagePreference: TifyLanguagePreference;
   heatIndexC: number | null;
   riskLevel: HeatRiskLevel | null;
   weatherFacts?: LiveWeatherFacts | null;
@@ -79,6 +82,9 @@ interface CheckInChatProps {
     notes?: string;
     chatMessages: CheckInChatMessage[];
   }) => Promise<void>;
+  /** Live profile sync while chatting — updates risk factors before final save. */
+  onDraftAdapt?: (draft: CheckInChatDraft) => void | Promise<void>;
+  onChangeLanguage?: () => void;
   onClose?: () => void;
 }
 
@@ -135,9 +141,11 @@ interface CheckInHeaderProps {
   usesAi: boolean;
   activeStep: number;
   draftStep: CheckInChatStep;
+  heatIndexC: number | null;
+  riskLevel: HeatRiskLevel | null;
   onClose?: () => void;
+  onChangeLanguage?: () => void;
   compact?: boolean;
-  hideStepLabels?: boolean;
 }
 
 function CheckInHeader({
@@ -146,15 +154,18 @@ function CheckInHeader({
   usesAi,
   activeStep,
   draftStep,
+  heatIndexC,
+  riskLevel,
   onClose,
+  onChangeLanguage,
   compact = false,
-  hideStepLabels = false,
 }: CheckInHeaderProps) {
-  const showSteps = !compact && !usesAi && draftStep !== 'done';
+  const showSteps = !compact && draftStep !== 'done';
+  const riskColor = riskLevel ? RISK_LEVEL_COLORS[riskLevel] : primaryColor;
 
   return (
     <View style={[styles.header, compact && styles.headerCompact]}>
-      <View style={[styles.headerBar, !showSteps && styles.headerBarCompact]}>
+      <View style={styles.headerBar}>
         {onClose ? (
           <Pressable
             onPress={onClose}
@@ -163,49 +174,78 @@ function CheckInHeader({
             accessibilityLabel="Go back"
             hitSlop={8}
           >
-            <Ionicons name="chevron-back" size={20} color={primaryColor} />
+            <Ionicons name="chevron-back" size={22} color={primaryColor} />
           </Pressable>
-        ) : null}
+        ) : (
+          <View style={styles.backBtnSpacer} />
+        )}
 
         <View style={styles.headerBrand}>
-          <TifyAvatar size={compact ? 28 : 32} online />
+          <TifyAvatar size={compact ? 30 : 36} online />
           <View style={styles.headerBrandText}>
             <Text style={styles.headerTitle}>{ASSISTANT_NAME}</Text>
-            <Text style={styles.headerTagline}>Online</Text>
+            <Text style={styles.headerTagline}>{usesAi ? 'AI heat check-in' : 'Heat check-in'}</Text>
           </View>
         </View>
+
+        {onChangeLanguage ? (
+          <Pressable
+            onPress={onChangeLanguage}
+            style={({ pressed }) => [styles.langBtn, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Change language"
+            hitSlop={8}
+          >
+            <Ionicons name="language-outline" size={22} color={primaryColor} />
+          </Pressable>
+        ) : (
+          <View style={styles.backBtnSpacer} />
+        )}
       </View>
+
+      {heatIndexC != null || riskLevel ? (
+        <View style={styles.contextStrip}>
+          {heatIndexC != null ? (
+            <View style={styles.contextChip}>
+              <Ionicons name="flame-outline" size={13} color={riskColor} />
+              <Text style={styles.contextChipText}>{Number(heatIndexC.toFixed(1))}°C</Text>
+            </View>
+          ) : null}
+          {riskLevel ? (
+            <View style={[styles.contextChip, { borderColor: `${riskColor}55` }]}>
+              <View style={[styles.contextRiskDot, { backgroundColor: riskColor }]} />
+              <Text style={[styles.contextChipText, { color: riskColor }]}>
+                {RISK_LEVEL_SHORT_LABELS[riskLevel]}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
 
       {showSteps ? (
         <View style={styles.progressSection}>
-          <View style={styles.stepDots}>
+          <View style={styles.progressTrack}>
             {CHECK_IN_STEPS.map((step, index) => {
-              const done = index < activeStep;
+              const filled = index <= activeStep;
+              return (
+                <View
+                  key={step.key}
+                  style={[styles.progressSegment, filled && styles.progressSegmentFilled]}
+                />
+              );
+            })}
+          </View>
+          <View style={styles.progressLabels}>
+            {CHECK_IN_STEPS.map((step, index) => {
               const current = index === activeStep;
               return (
-                <View key={step.key} style={styles.stepItem}>
-                  <View
-                    style={[
-                      styles.stepDot,
-                      done && styles.stepDotDone,
-                      current && styles.stepDotCurrent,
-                    ]}
-                  >
-                    {done ? (
-                      <Ionicons name="checkmark" size={12} color="#FFF" />
-                    ) : (
-                      <Text style={[styles.stepDotNum, current && styles.stepDotNumActive]}>
-                        {index + 1}
-                      </Text>
-                    )}
-                  </View>
-                  <Text
-                    style={[styles.stepLabel, current && styles.stepLabelActive]}
-                    numberOfLines={1}
-                  >
-                    {hideStepLabels ? '' : compact ? step.shortLabel : step.label}
-                  </Text>
-                </View>
+                <Text
+                  key={step.key}
+                  style={[styles.progressLabel, current && styles.progressLabelActive]}
+                  numberOfLines={1}
+                >
+                  {compact ? step.shortLabel : step.label}
+                </Text>
               );
             })}
           </View>
@@ -217,12 +257,15 @@ function CheckInHeader({
 
 export function CheckInChat({
   profile,
+  languagePreference,
   heatIndexC,
   riskLevel,
   weatherFacts = null,
   location = null,
   onRequestLocation,
   onSave,
+  onDraftAdapt,
+  onChangeLanguage,
   onClose,
 }: CheckInChatProps) {
   const { palette, isDark } = useAppTheme();
@@ -265,23 +308,51 @@ export function CheckInChat({
     if (chatInitializedRef.current) return;
     chatInitializedRef.current = true;
     greetingHeatSynced.current = false;
-    const start = checkInChatService.startConversation(profile, heatIndexC, weatherFacts);
+    const start = checkInChatService.startConversation(
+      profile,
+      heatIndexC,
+      weatherFacts,
+      languagePreference,
+    );
     setMessages(start.messages);
     setDraft(start.draft);
     setUsesAi(checkInChatService.isAiConfigured());
-    setQuickReplies(checkInChatService.getStarterQuickReplies());
-    // Intentionally run once per mount; profile updates after save must not wipe chat history.
+    setQuickReplies(start.quickReplies);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [languagePreference]);
 
-  // After live weather refresh, rewrite only the starter greeting so Tify matches Weather tab.
+  // Adaptive AI greeting + sync heat index into opener when weather loads.
   useEffect(() => {
-    if (heatIndexC == null || greetingHeatSynced.current) return;
+    if (greetingHeatSynced.current) return;
     if (messages.length !== 1 || messages[0]?.role !== 'assistant') return;
-    const start = checkInChatService.startConversation(profile, heatIndexC, weatherFacts);
-    setMessages(start.messages);
+
     greetingHeatSynced.current = true;
-  }, [heatIndexC, weatherFacts, messages, profile]);
+    const baseMessage = messages[0];
+
+    void (async () => {
+      if (checkInChatService.isAiConfigured()) {
+        const aiGreeting = await checkInChatService.enrichGreeting(
+          profile,
+          heatIndexC,
+          weatherFacts,
+          languagePreference,
+        );
+        if (aiGreeting) {
+          setMessages([{ ...baseMessage, content: aiGreeting }]);
+          setUsesAi(true);
+          return;
+        }
+      }
+
+      const start = checkInChatService.startConversation(
+        profile,
+        heatIndexC,
+        weatherFacts,
+        languagePreference,
+      );
+      setMessages(start.messages);
+    })();
+  }, [heatIndexC, weatherFacts, messages, profile, languagePreference]);
 
   const scrollToEnd = useCallback(() => {
     requestAnimationFrame(() => {
@@ -327,8 +398,8 @@ export function CheckInChat({
 
     let cancelled = false;
     setHospitalLoading(true);
-    setHospitalStatus(
-      isGps ? null : 'Using Tuguegarao city center — enable GPS for your exact nearest hospital.',
+      setHospitalStatus(
+      isGps ? null : 'City reference location — enable GPS for your nearest hospital.',
     );
 
     void hospitalService.findNearest(searchAt).then((result) => {
@@ -422,6 +493,7 @@ export function CheckInChat({
           messages: nextMessages,
           userText: trimmed,
           weather: weatherFacts,
+          languagePreference,
         });
 
         const fullTranscript = [...nextMessages, result.assistantMessage];
@@ -432,12 +504,15 @@ export function CheckInChat({
         setUsesAi(result.usesAi);
         if (result.showHospitalCta) setShowHospitalCta(true);
 
+        if (onDraftAdapt) {
+          void onDraftAdapt(result.draft);
+        }
+
         if (
           result.readyToSave &&
           result.draft.hydrationStatus &&
           result.draft.activityLevel &&
-          result.draft.generalStatus &&
-          !result.usesAi
+          result.draft.generalStatus
         ) {
           await saveCheckIn(result.draft, fullTranscript);
         }
@@ -445,7 +520,7 @@ export function CheckInChat({
         setTyping(false);
       }
     },
-    [typing, saving, profile, heatIndexC, weatherFacts, riskLevel, draft, messages, saveCheckIn],
+    [typing, saving, profile, heatIndexC, weatherFacts, riskLevel, draft, messages, saveCheckIn, onDraftAdapt, languagePreference],
   );
 
   const renderMessage = ({ item, index }: { item: CheckInChatMessage; index: number }) => {
@@ -456,13 +531,12 @@ export function CheckInChat({
       <View style={[styles.messageBlock, isUser && styles.messageBlockUser]}>
         <View style={[styles.row, isUser && styles.rowUser]}>
           {!isUser ? (
-            showAvatar ? <TifyAvatar size={30} online /> : <View style={styles.avatarSpacer} />
+            showAvatar ? <TifyAvatar size={28} /> : <View style={styles.avatarSpacer} />
           ) : null}
           <View style={[styles.bubbleWrap, isUser && styles.bubbleWrapUser]}>
-            {!isUser && showAvatar ? <Text style={styles.senderLabel}>{ASSISTANT_NAME}</Text> : null}
             {isUser ? (
               <LinearGradient
-                colors={['#1D4ED8', '#2563EB', '#3B82F6']}
+                colors={['#1D4ED8', '#2563EB']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={[styles.bubble, styles.bubbleUser]}
@@ -483,14 +557,6 @@ export function CheckInChat({
 
   return (
     <View style={[styles.root, keyboardHeight > 0 ? { paddingBottom: keyboardHeight } : null]}>
-      <LinearGradient
-        colors={getHeroGradient(isDark, riskLevel)}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={styles.ambientGlow} pointerEvents="none" />
-
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -503,40 +569,43 @@ export function CheckInChat({
           usesAi={usesAi}
           activeStep={activeStep}
           draftStep={draft.step}
+          heatIndexC={heatIndexC}
+          riskLevel={riskLevel}
           onClose={onClose}
+          onChangeLanguage={onChangeLanguage}
           compact={keyboardVisible || responsive.isCompact}
-          hideStepLabels={responsive.hideStepLabels}
         />
 
-        <FlatList
-          ref={listRef}
-          style={styles.flex}
-          data={messages}
-          keyExtractor={(item) => item.id}
-          renderItem={renderMessage}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
-          onContentSizeChange={scrollToEnd}
-          ListFooterComponent={
-            typing ? (
-              <View style={styles.messageBlock}>
-                <View style={styles.row}>
-                  <TifyAvatar size={30} online />
-                  <View style={[styles.bubble, styles.bubbleAssistant, styles.typingBubble]}>
-                    <View style={styles.typingDots}>
-                      <View style={styles.dot} />
-                      <View style={[styles.dot, styles.dotMid]} />
-                      <View style={[styles.dot, styles.dotLate]} />
+        <View style={styles.chatPanel}>
+          <FlatList
+            ref={listRef}
+            style={styles.flex}
+            data={messages}
+            keyExtractor={(item) => item.id}
+            renderItem={renderMessage}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+            onContentSizeChange={scrollToEnd}
+            ListFooterComponent={
+              typing ? (
+                <View style={styles.messageBlock}>
+                  <View style={styles.row}>
+                    <TifyAvatar size={28} />
+                    <View style={[styles.bubble, styles.bubbleAssistant, styles.typingBubble]}>
+                      <View style={styles.typingDots}>
+                        <View style={styles.dot} />
+                        <View style={[styles.dot, styles.dotMid]} />
+                        <View style={[styles.dot, styles.dotLate]} />
+                      </View>
                     </View>
-                    <Text style={styles.typingText}>Tify is typing...</Text>
                   </View>
                 </View>
-              </View>
-            ) : null
-          }
-        />
+              ) : null
+            }
+          />
+        </View>
 
         <View
           style={[
@@ -549,85 +618,137 @@ export function CheckInChat({
           ]}
         >
           {quickReplies?.length && !keyboardVisible ? (
-            <View style={styles.quickRepliesWrap}>
-              <Text style={styles.quickRepliesHint}>Quick replies</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                contentContainerStyle={styles.quickReplies}
-              >
-                {quickReplies.map((reply) => (
-                  <Pressable
-                    key={reply}
-                    style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
-                    onPress={() => void handleSend(reply)}
-                    disabled={typing || saving}
-                  >
-                    <Text style={styles.chipText} numberOfLines={1}>
-                      {chipDisplayLabel(reply)}
-                    </Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.quickReplies}
+            >
+              {quickReplies.map((reply) => (
+                <Pressable
+                  key={reply}
+                  style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
+                  onPress={() => void handleSend(reply)}
+                  disabled={typing || saving}
+                >
+                  <Text style={styles.chipText} numberOfLines={1}>
+                    {chipDisplayLabel(reply, languagePreference)}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
           ) : null}
 
           {showHospitalCta && !keyboardVisible ? (
             <View style={styles.hospitalCtaWrap}>
-              <Text style={styles.hospitalCtaHint}>
-                {hospitalUsesGps ? 'Nearest hospital in Tuguegarao' : 'Nearest hospital (enable GPS for accuracy)'}
-              </Text>
+              <View style={styles.hospitalCtaHead}>
+                <View style={styles.hospitalCtaHeadLeft}>
+                  <View style={styles.hospitalCtaIconWrap}>
+                    <Ionicons name="medkit" size={16} color="#DC2626" />
+                  </View>
+                  <Text style={styles.hospitalCtaHint}>Nearest hospital</Text>
+                </View>
+                <Pressable
+                  onPress={() => router.push('/hospital')}
+                  style={({ pressed }) => [styles.hospitalSeeAll, pressed && styles.pressed]}
+                  accessibilityRole="button"
+                  accessibilityLabel="See all hospitals"
+                >
+                  <Text style={styles.hospitalSeeAllText}>See all</Text>
+                  <Ionicons name="chevron-forward" size={14} color={palette.primary} />
+                </Pressable>
+              </View>
+
               {hospitalLoading ? (
-                <View style={[styles.hospitalCta, styles.hospitalCtaMuted]}>
+                <View style={[styles.hospitalCtaCard, styles.hospitalCtaMuted]}>
                   <ActivityIndicator color={palette.primary} />
+                  <Text style={styles.hospitalLoadingText}>Finding nearest hospital…</Text>
                 </View>
               ) : nearestHospital ? (
-                <Pressable
-                  style={({ pressed }) => [styles.hospitalCtaOuter, pressed && styles.pressed]}
-                  onPress={() => void handleOpenNearestHospital()}
-                  disabled={openingMaps}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Open directions to ${nearestHospital.name}`}
-                >
+                <View style={styles.hospitalCtaOuter}>
                   <LinearGradient
-                    colors={['#B91C1C', '#DC2626', '#EF4444']}
+                    colors={isDark ? ['#991B1B', '#DC2626'] : ['#DC2626', '#EF4444']}
                     start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.hospitalCta}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.hospitalCtaCard}
                   >
-                    {openingMaps ? (
-                      <ActivityIndicator color="#FFF" />
-                    ) : (
-                      <View style={styles.hospitalCtaRow}>
-                        <Ionicons name="navigate" size={20} color="#FFF" />
-                        <View style={styles.hospitalCtaTextCol}>
-                          <Text style={styles.hospitalCtaTitleLight}>{nearestHospital.name}</Text>
-                          <Text style={styles.hospitalCtaSubLight}>
-                            {nearestHospital.distanceKm} km
-                            {nearestHospital.estimatedTravelTime
-                              ? ` · ${nearestHospital.estimatedTravelTime}`
-                              : ''}
-                            {' · Tap for directions'}
+                    <View style={styles.hospitalNearestBadge}>
+                      <Ionicons name="star" size={10} color="#FFFFFF" />
+                      <Text style={styles.hospitalNearestBadgeText}>
+                        {hospitalUsesGps ? 'Closest to you' : 'City reference'}
+                      </Text>
+                    </View>
+                    <Text style={styles.hospitalCtaTitleLight} numberOfLines={2}>
+                      {nearestHospital.name}
+                    </Text>
+                    <Text style={styles.hospitalCtaAddressLight} numberOfLines={2}>
+                      {nearestHospital.address}
+                    </Text>
+                    <View style={styles.hospitalStatRow}>
+                      <View style={styles.hospitalStatPill}>
+                        <Ionicons name="navigate-outline" size={11} color="#FFFFFF" />
+                        <Text style={styles.hospitalStatPillText}>{nearestHospital.distanceKm} km</Text>
+                      </View>
+                      {nearestHospital.estimatedTravelTime ? (
+                        <View style={styles.hospitalStatPill}>
+                          <Ionicons name="time-outline" size={11} color="#FFFFFF" />
+                          <Text style={styles.hospitalStatPillText}>
+                            {nearestHospital.estimatedTravelTime.replace('~', '')}
                           </Text>
                         </View>
-                      </View>
-                    )}
+                      ) : null}
+                    </View>
+                    <View style={styles.hospitalCtaActions}>
+                      <Pressable
+                        onPress={() => void handleOpenNearestHospital()}
+                        disabled={openingMaps}
+                        style={({ pressed }) => [
+                          styles.hospitalBtnPrimary,
+                          pressed && styles.pressed,
+                        ]}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Get directions to ${nearestHospital.name}`}
+                      >
+                        {openingMaps ? (
+                          <ActivityIndicator color="#DC2626" size="small" />
+                        ) : (
+                          <>
+                            <Ionicons name="navigate" size={17} color="#DC2626" />
+                            <Text style={styles.hospitalBtnPrimaryText}>Directions</Text>
+                          </>
+                        )}
+                      </Pressable>
+                      {nearestHospital.phone ? (
+                        <Pressable
+                          onPress={() =>
+                            void Linking.openURL(`tel:${nearestHospital.phone!.replace(/\s/g, '')}`)
+                          }
+                          style={({ pressed }) => [
+                            styles.hospitalBtnGhost,
+                            pressed && styles.pressed,
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Call ${nearestHospital.name}`}
+                        >
+                          <Ionicons name="call" size={17} color="#FFFFFF" />
+                          <Text style={styles.hospitalBtnGhostText}>Call</Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
                   </LinearGradient>
-                </Pressable>
+                </View>
               ) : (
-                <View style={[styles.hospitalCta, styles.hospitalCtaMuted]}>
+                <View style={[styles.hospitalCtaCard, styles.hospitalCtaMuted]}>
+                  <Ionicons name="medkit-outline" size={22} color={palette.textMuted} />
                   <Text style={styles.hospitalCtaTitle}>
                     {hospitalStatus ?? 'Hospital unavailable'}
                   </Text>
                 </View>
               )}
+
               {!hospitalUsesGps && onRequestLocation ? (
                 <Pressable
-                  style={({ pressed }) => [
-                    styles.hospitalGpsLink,
-                    pressed && styles.pressed,
-                  ]}
+                  style={({ pressed }) => [styles.hospitalGpsLink, pressed && styles.pressed]}
                   onPress={() => void handleRequestLocation()}
                   disabled={requestingLocation}
                   accessibilityRole="button"
@@ -637,8 +758,8 @@ export function CheckInChat({
                     <ActivityIndicator color={palette.primary} size="small" />
                   ) : (
                     <>
-                      <Ionicons name="location-outline" size={16} color={palette.primary} />
-                      <Text style={styles.hospitalGpsLinkText}>Use my GPS location</Text>
+                      <Ionicons name="locate-outline" size={16} color={palette.primary} />
+                      <Text style={styles.hospitalGpsLinkText}>Use GPS for accurate distance</Text>
                     </>
                   )}
                 </Pressable>
@@ -676,7 +797,7 @@ export function CheckInChat({
               style={styles.input}
               value={input}
               onChangeText={setInput}
-              placeholder="Message Tify..."
+              placeholder="Message…"
               placeholderTextColor={palette.textLight}
               multiline
               maxLength={500}
@@ -727,16 +848,7 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number, r: Respon
   return StyleSheet.create({
     root: {
       flex: 1,
-      backgroundColor: p.background,
-    },
-    ambientGlow: {
-      position: 'absolute',
-      top: 60,
-      right: -50,
-      width: 200,
-      height: 200,
-      borderRadius: 100,
-      backgroundColor: isDark ? 'rgba(37,99,235,0.1)' : 'rgba(147,197,253,0.4)',
+      backgroundColor: isDark ? p.background : '#F1F5F9',
     },
     flex: { flex: 1 },
 
@@ -745,23 +857,17 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number, r: Respon
       paddingTop: spacing.sm,
       paddingBottom: spacing.md,
       paddingHorizontal: pagePad,
-      borderBottomLeftRadius: radius.xxl,
-      borderBottomRightRadius: radius.xxl,
-      borderBottomWidth: 0,
+      ...cardShadow(),
+      zIndex: 2,
     },
     headerCompact: {
       paddingBottom: spacing.sm,
-      borderBottomLeftRadius: 0,
-      borderBottomRightRadius: 0,
     },
     headerBar: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'flex-start',
+      justifyContent: 'space-between',
       gap: spacing.sm,
-    },
-    headerBarCompact: {
-      marginBottom: 0,
     },
     backBtn: {
       width: 40,
@@ -772,19 +878,31 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number, r: Respon
       backgroundColor: p.primarySoft,
       flexShrink: 0,
     },
+    backBtnSpacer: {
+      width: 40,
+      flexShrink: 0,
+    },
+    langBtn: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: radius.md,
+      flexShrink: 0,
+    },
     headerBrand: {
+      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       gap: spacing.sm,
-      flexShrink: 1,
     },
     headerBrandText: {
       alignItems: 'flex-start',
-      flexShrink: 1,
     },
     headerTitle: {
       fontFamily: fonts.headerSemi,
-      fontSize: 18,
+      fontSize: 17,
       color: p.text,
       letterSpacing: -0.3,
     },
@@ -794,54 +912,71 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number, r: Respon
       marginTop: 1,
       fontSize: 12,
     },
-    progressSection: {
-      marginTop: spacing.md,
-    },
-    stepDots: {
+    contextStrip: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      gap: r.isCompact ? spacing.xs : spacing.sm,
-    },
-    stepItem: {
-      flex: 1,
-      alignItems: 'center',
-      gap: 6,
-    },
-    stepDot: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
       alignItems: 'center',
       justifyContent: 'center',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+      marginTop: spacing.md,
+    },
+    contextChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      paddingVertical: 5,
+      paddingHorizontal: spacing.md,
+      borderRadius: radius.pill,
       backgroundColor: p.surfaceInset,
       borderWidth: 1,
       borderColor: p.border,
     },
-    stepDotDone: {
-      backgroundColor: p.primary,
-      borderColor: p.primary,
+    contextRiskDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 4,
     },
-    stepDotCurrent: {
-      backgroundColor: p.primary,
-      borderColor: p.primary,
-    },
-    stepDotNum: {
+    contextChipText: {
       fontFamily: fonts.bodySemiBold,
       fontSize: 12,
-      color: p.textMuted,
+      color: p.textSecondary,
     },
-    stepDotNumActive: {
-      color: '#FFF',
+    progressSection: {
+      marginTop: spacing.md,
+      gap: spacing.sm,
     },
-    stepLabel: {
+    progressTrack: {
+      flexDirection: 'row',
+      gap: 4,
+      height: 4,
+    },
+    progressSegment: {
+      flex: 1,
+      borderRadius: radius.pill,
+      backgroundColor: p.surfaceInset,
+    },
+    progressSegmentFilled: {
+      backgroundColor: p.primary,
+    },
+    progressLabels: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    },
+    progressLabel: {
+      flex: 1,
       fontFamily: fonts.bodyMedium,
       fontSize: r.isCompact ? 10 : 11,
       color: p.textMuted,
       textAlign: 'center',
     },
-    stepLabelActive: {
+    progressLabelActive: {
       color: p.primary,
       fontFamily: fonts.bodySemiBold,
+    },
+
+    chatPanel: {
+      flex: 1,
+      backgroundColor: isDark ? p.background : '#F8FAFC',
     },
 
     listContent: {
@@ -867,7 +1002,7 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number, r: Respon
       justifyContent: 'flex-end',
     },
     avatarSpacer: {
-      width: 38,
+      width: 36,
     },
     bubbleWrap: {
       maxWidth: r.chatBubbleMaxWidth,
@@ -877,17 +1012,10 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number, r: Respon
     bubbleWrapUser: {
       alignItems: 'flex-end',
     },
-    senderLabel: {
-      fontFamily: fonts.bodySemiBold,
-      fontSize: 11,
-      color: p.primary,
-      marginBottom: 4,
-      marginLeft: 4,
-    },
     bubble: {
-      borderRadius: 20,
-      paddingVertical: spacing.md,
-      paddingHorizontal: spacing.lg,
+      borderRadius: 18,
+      paddingVertical: spacing.sm + 2,
+      paddingHorizontal: spacing.md + 2,
     },
     bubbleAssistant: {
       backgroundColor: p.surface,
@@ -924,9 +1052,9 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number, r: Respon
     typingBubble: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.sm,
-      minWidth: 128,
-      paddingVertical: 14,
+      minWidth: 52,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.lg,
     },
     typingDots: {
       flexDirection: 'row',
@@ -942,31 +1070,19 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number, r: Respon
     },
     dotMid: { opacity: 0.6 },
     dotLate: { opacity: 1 },
-    typingText: {
-      ...typography.caption,
-      color: p.textMuted,
-    },
 
     footer: {
-      paddingTop: spacing.md,
+      paddingTop: spacing.sm,
+      paddingHorizontal: 0,
       backgroundColor: p.surface,
-      borderTopLeftRadius: radius.xxl,
-      borderTopRightRadius: radius.xxl,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: p.border,
-    },
-    quickRepliesWrap: {
-      paddingBottom: spacing.sm,
-    },
-    quickRepliesHint: {
-      fontFamily: fonts.bodySemiBold,
-      fontSize: 12,
-      color: p.textMuted,
-      paddingHorizontal: pagePad,
-      marginBottom: spacing.sm,
+      ...cardShadow(),
     },
     quickReplies: {
       paddingHorizontal: pagePad,
+      paddingTop: spacing.sm,
+      paddingBottom: spacing.sm,
       gap: spacing.sm,
     },
     chip: {
@@ -1006,53 +1122,158 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number, r: Respon
       marginHorizontal: pagePad,
       marginBottom: spacing.md,
     },
+    hospitalCtaHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: spacing.sm,
+    },
+    hospitalCtaHeadLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    hospitalCtaIconWrap: {
+      width: 28,
+      height: 28,
+      borderRadius: radius.md,
+      backgroundColor: isDark ? 'rgba(220,38,38,0.2)' : '#FEE2E2',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     hospitalCtaHint: {
       fontFamily: fonts.bodySemiBold,
-      fontSize: 12,
-      color: p.textMuted,
-      marginBottom: spacing.sm,
+      fontSize: 13,
+      color: p.text,
+    },
+    hospitalSeeAll: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+      paddingVertical: 4,
+      paddingHorizontal: spacing.xs,
+    },
+    hospitalSeeAllText: {
+      fontFamily: fonts.bodySemiBold,
+      fontSize: 13,
+      color: p.primary,
     },
     hospitalCtaOuter: {
       borderRadius: radius.xl,
       overflow: 'hidden',
+      ...cardShadow(),
     },
-    hospitalCta: {
+    hospitalCtaCard: {
       borderRadius: radius.xl,
-      paddingVertical: spacing.md + 2,
-      paddingHorizontal: spacing.lg,
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexDirection: 'row',
+      padding: spacing.lg,
       gap: spacing.sm,
-    },
-    hospitalCtaRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.md,
-    },
-    hospitalCtaTextCol: {
-      flex: 1,
-      gap: 2,
+      alignItems: 'stretch',
     },
     hospitalCtaMuted: {
       backgroundColor: p.surfaceInset,
       borderWidth: 1,
       borderColor: p.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: spacing.lg,
+      gap: spacing.sm,
+    },
+    hospitalLoadingText: {
+      ...typography.caption,
+      color: p.textMuted,
+    },
+    hospitalNearestBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: 4,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 3,
+      borderRadius: radius.pill,
+      marginBottom: 2,
+    },
+    hospitalNearestBadgeText: {
+      fontFamily: fonts.bodySemiBold,
+      fontSize: 10,
+      color: '#FFFFFF',
+      letterSpacing: 0.3,
+      textTransform: 'uppercase',
     },
     hospitalCtaTitle: {
       fontFamily: fonts.bodySemiBold,
-      fontSize: 15,
+      fontSize: 14,
       color: p.text,
+      textAlign: 'center',
     },
     hospitalCtaTitleLight: {
-      fontFamily: fonts.bodySemiBold,
-      fontSize: 15,
-      color: '#FFF',
+      fontFamily: fonts.headerSemi,
+      fontSize: 16,
+      color: '#FFFFFF',
+      lineHeight: 22,
     },
-    hospitalCtaSubLight: {
+    hospitalCtaAddressLight: {
       ...typography.caption,
-      color: 'rgba(255,255,255,0.9)',
-      lineHeight: 18,
+      color: 'rgba(255,255,255,0.88)',
+      lineHeight: 17,
+    },
+    hospitalStatRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+      marginTop: 2,
+      marginBottom: spacing.xs,
+    },
+    hospitalStatPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: radius.pill,
+    },
+    hospitalStatPillText: {
+      fontFamily: fonts.bodySemiBold,
+      fontSize: 11,
+      color: '#FFFFFF',
+    },
+    hospitalCtaActions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      marginTop: spacing.xs,
+    },
+    hospitalBtnPrimary: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      backgroundColor: '#FFFFFF',
+      borderRadius: radius.lg,
+      paddingVertical: spacing.md,
+      minHeight: 44,
+    },
+    hospitalBtnPrimaryText: {
+      fontFamily: fonts.bodySemiBold,
+      fontSize: 14,
+      color: '#DC2626',
+    },
+    hospitalBtnGhost: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      paddingHorizontal: spacing.lg,
+      borderRadius: radius.lg,
+      borderWidth: 1.5,
+      borderColor: 'rgba(255,255,255,0.5)',
+      minHeight: 44,
+    },
+    hospitalBtnGhostText: {
+      fontFamily: fonts.bodySemiBold,
+      fontSize: 14,
+      color: '#FFFFFF',
     },
     hospitalGpsLink: {
       flexDirection: 'row',
@@ -1061,6 +1282,10 @@ function createStyles(p: AppPalette, isDark: boolean, pagePad: number, r: Respon
       gap: spacing.xs,
       marginTop: spacing.sm,
       paddingVertical: spacing.sm,
+      backgroundColor: p.primarySoft,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(37,99,235,0.25)' : 'rgba(37,99,235,0.12)',
     },
     hospitalGpsLinkText: {
       fontFamily: fonts.bodySemiBold,

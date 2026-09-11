@@ -1,8 +1,11 @@
 import { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, type StyleProp, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { ProfileAvatar } from '@/src/components/ProfileAvatar';
+import { liveIndicatorColors } from '@/src/constants/live-indicator';
+import type { ProfileAvatarId } from '@/src/constants/profile-avatars';
 import { radius, spacing, typography, fonts } from '@/src/theme';
 import { useAppTheme } from '@/src/theme/useAppTheme';
 import type { AppPalette } from '@/src/theme/palettes';
@@ -60,7 +63,6 @@ export function PageMasthead({
   headerRight,
   style,
 }: PageMastheadProps) {
-  const router = useRouter();
   const { palette, isDark } = useAppTheme();
   const { mastheadTitleSize, isCompact } = useResponsive();
   const styles = useMemo(
@@ -124,8 +126,9 @@ export interface HomeMastheadProps {
   name: string;
   location: string;
   isLive?: boolean;
-  avatarLetter: string;
+  avatarId?: ProfileAvatarId | null;
   onProfilePress: () => void;
+  onAvatarPress?: () => void;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -135,8 +138,9 @@ export function HomeMasthead({
   name,
   location,
   isLive,
-  avatarLetter,
+  avatarId,
   onProfilePress,
+  onAvatarPress,
   style,
 }: HomeMastheadProps) {
   const { palette, isDark } = useAppTheme();
@@ -145,48 +149,57 @@ export function HomeMasthead({
     () => createStyles(palette, isDark, mastheadTitleSize, isCompact),
     [palette, isDark, mastheadTitleSize, isCompact],
   );
+  const live = liveIndicatorColors(isDark);
 
   return (
     <View style={[styles.homeWrap, style]}>
-      <View style={styles.frameOuter}>
-        <View style={styles.frameGhost} pointerEvents="none" />
-        <View style={styles.frameRect}>
-          <View style={styles.rectAccent} pointerEvents="none" />
-
-          <View style={styles.homeRow}>
-            <View style={styles.textBlock}>
-              <Text style={styles.greeting}>{greeting}</Text>
-              <Text style={styles.title} accessibilityRole="header" numberOfLines={1}>
-                {name}
-              </Text>
-              <View style={styles.metaRow}>
-                <Ionicons name="location-sharp" size={12} color={palette.primary} />
-                <Text style={styles.subtitle} numberOfLines={1}>
-                  {location}
-                </Text>
-                {isLive ? (
-                  <>
-                    <Text style={styles.metaDot}>·</Text>
-                    <View style={styles.liveDot} />
-                    <Text style={[styles.subtitle, styles.liveLabel]}>Live</Text>
-                  </>
-                ) : null}
-              </View>
+      <LinearGradient
+        colors={isDark ? ['#1E3A8A', '#1E40AF'] : ['#EFF6FF', '#DBEAFE']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.welcomeCard}
+      >
+        <View style={styles.homeRow}>
+          <View style={styles.textBlock}>
+            <Text style={styles.greeting}>{greeting},</Text>
+            <Text style={styles.title} accessibilityRole="header" numberOfLines={1}>
+              {name}
+            </Text>
+            <Text style={styles.welcomeHint} numberOfLines={2}>
+              Stay heat-safe in Tuguegarao today
+            </Text>
+            <View style={styles.metaRow}>
+              <Ionicons name="location-sharp" size={12} color={palette.primary} />
+              <Text style={styles.subtitle} numberOfLines={1}>{location}</Text>
+              {isLive ? (
+                <View style={styles.livePill}>
+                  <View style={[styles.livePillDot, { backgroundColor: live.dot, borderColor: live.dotRing }]} />
+                  <Text style={[styles.livePillText, { color: live.text }]}>Live</Text>
+                </View>
+              ) : null}
             </View>
+          </View>
 
+          <View style={styles.avatarCol}>
+            <ProfileAvatar
+              name={name}
+              avatarId={avatarId}
+              size="lg"
+              showEditBadge
+              onPress={onAvatarPress ?? onProfilePress}
+              accessibilityLabel="Change profile avatar"
+            />
             <Pressable
               onPress={onProfilePress}
-              style={({ pressed }) => [styles.avatarBtn, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.profileLink, pressed && styles.pressed]}
               accessibilityRole="button"
               accessibilityLabel="Open profile"
             >
-              <LinearGradient colors={['#3B82F6', '#1D4ED8']} style={styles.avatar}>
-                <Text style={styles.avatarLetter}>{avatarLetter}</Text>
-              </LinearGradient>
+              <Text style={styles.profileLinkText}>Profile</Text>
             </Pressable>
           </View>
         </View>
-      </View>
+      </LinearGradient>
     </View>
   );
 }
@@ -231,6 +244,14 @@ function createStyles(
     },
     homeWrap: {
       marginBottom: spacing.xl,
+    },
+    welcomeCard: {
+      borderRadius: radius.xxl,
+      paddingVertical: isCompact ? spacing.lg : spacing.xl,
+      paddingHorizontal: isCompact ? spacing.lg : spacing.xl,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(59,130,246,0.35)' : 'rgba(37,99,235,0.15)',
+      overflow: 'hidden',
     },
     frameOuter: {
       position: 'relative',
@@ -291,7 +312,7 @@ function createStyles(
       justifyContent: 'space-between',
       gap: spacing.md,
     },
-    textBlock: { flex: 1, minWidth: 0, gap: 4, paddingLeft: spacing.sm },
+    textBlock: { flex: 1, minWidth: 0, gap: 4 },
     headerRight: {
       flexShrink: 0,
       marginTop: 4,
@@ -311,16 +332,23 @@ function createStyles(
       color: p.primary,
     },
     greeting: {
-      ...typography.overline,
-      color: p.textMuted,
-      textTransform: 'capitalize',
+      fontFamily: fonts.bodyMedium,
+      fontSize: 15,
+      color: isDark ? 'rgba(191,219,254,0.9)' : p.textSecondary,
+      letterSpacing: 0.2,
     },
     title: {
       fontFamily: fonts.header,
-      fontSize: mastheadTitleSize,
+      fontSize: mastheadTitleSize + 2,
       letterSpacing: -1,
-      lineHeight: mastheadTitleSize + 6,
-      color: p.text,
+      lineHeight: mastheadTitleSize + 8,
+      color: isDark ? '#FFFFFF' : p.text,
+    },
+    welcomeHint: {
+      ...typography.caption,
+      color: isDark ? 'rgba(191,219,254,0.8)' : p.textMuted,
+      lineHeight: 17,
+      marginTop: 2,
     },
     metaRow: {
       flexDirection: 'row',
@@ -338,24 +366,45 @@ function createStyles(
       borderRadius: radius.pill,
       backgroundColor: p.primary,
     },
-    liveLabel: { color: p.primary },
+    livePill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: radius.pill,
+      backgroundColor: isDark ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.65)',
+      marginLeft: 4,
+    },
+    livePillDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      borderWidth: 1,
+    },
+    livePillText: {
+      fontSize: 10,
+      fontFamily: fonts.bodySemiBold,
+      letterSpacing: 0.3,
+    },
     subtitle: {
       ...typography.caption,
       fontFamily: fonts.bodyMedium,
-      color: p.textSecondary,
+      color: isDark ? 'rgba(191,219,254,0.85)' : p.textSecondary,
     },
-    avatarBtn: { flexShrink: 0, marginTop: 4 },
-    avatar: {
-      width: 48,
-      height: 48,
-      borderRadius: radius.pill,
+    avatarCol: {
       alignItems: 'center',
-      justifyContent: 'center',
+      gap: spacing.xs,
+      flexShrink: 0,
     },
-    avatarLetter: {
-      fontFamily: fonts.headerSemi,
-      fontSize: 18,
-      color: '#FFF',
+    profileLink: {
+      paddingVertical: 2,
+      paddingHorizontal: spacing.sm,
+    },
+    profileLinkText: {
+      ...typography.caption,
+      fontFamily: fonts.bodySemiBold,
+      color: p.primary,
     },
     pressed: { opacity: 0.88 },
   });

@@ -1,0 +1,998 @@
+g
+Republic of the Philippines
+Department of Education
+Region II – Cagayan Valley
+SCHOOLS DIVISION OF TUGUEGARAO CITY
+CAGAYAN NATIONAL HIGH SCHOOL – SENIOR HIGH
+INITIFY: A Hybrid AI-Based Heat-Risk Monitoring and Personalized Alert System
+Iquin, Joshua 
+Patricio, Rhone Kyle 
+Apostol, Alexandra 
+Banan, Angela 
+Caban, Karylle Kate 
+Dapal, Charleth 
+Dacayan, Pearl Haven 
+Mamanao, Jazmine Zara Faye 
+GRADE 12 STEM LEARNERS
+A Quantitative Research Submitted to
+Science, Technology, Engineering and Mathematics (STEM) Strand
+July 2026
+TABLE OF CONTENTS
+Title Page
+1
+Table of Contents
+2
+Abstract
+3
+Acknowledgement
+4
+I.
+THE PROBLEM AND ITS BACKGROUND
+5
+A. Overview or Background of the Study
+6
+B. Conceptual Framework
+C. Research Questions
+7
+D. Hypothesis
+8
+E. Scope and Delimitations
+9
+F. Significance of the Study
+10
+G. Definition of Terms
+11
+II.
+REVIEW OF RELATED LITERATURE AND RELATED STUDIES
+12
+III.
+RESEARCH METHODOLOGY
+20
+A. Research Design
+20
+B. Sampling Procedure and Samples
+21
+C. Data Gathering Methods
+21
+D. Data Analysis
+24
+IV.
+PRESENTATION, ANALYSIS, AND INTERPRETATION OF DATA
+25
+V.
+SUMMARY, CONCLUSIONS, AND RECOMMENDATIONS
+26
+VI.
+REFERENCES
+27
+Appendices
+28
+THE PROBLEM AND ITS BACKGROUND
+BACKGROUND OF THE STUDY
+Extreme heat has become an increasingly serious public health concern as climate change continues to raise global temperatures and increase the frequency and intensity of heat waves. Prolonged exposure to extreme heat can lead to dehydration, heat exhaustion, heat stroke, cardiovascular complications, and other heat-related illnesses, particularly among older adults, outdoor workers, children, and individuals with pre-existing health conditions. As heat-related health risks continue to rise, there is a growing need for innovative technologies that can monitor environmental conditions, assess individual risk, and provide timely interventions to prevent serious health consequences.
+Tropical and urban areas are especially vulnerable due to high temperatures, humidity, and the urban heat island effect, which intensify heat exposure. In the Philippines, extreme heat has become more frequent, resulting in class suspensions, increased health risks, and disruptions to daily activities. Although weather agencies issue heat index advisories, these warnings are generally intended for the public as a whole and may not accurately reflect an individual's actual level of risk. Factors such as age, existing medical conditions, activity level, hydration status, and localized environmental conditions can significantly influence a person's susceptibility to heat-related illnesses.
+Current heat-monitoring applications and warning systems primarily focus on reporting weather conditions or heat index values. While these systems help increase public awareness, many provide limited personalized risk assessment and lack emergency response capabilities when a user may already be experiencing a heat-related emergency. As a result, users may receive warnings but still have limited guidance or assistance during critical situations when immediate action is necessary.
+To address these gaps, this study proposes IniTify, a hybrid AI-based heat-risk monitoring and personalized alert system designed to provide intelligent, real-time heat-risk assessment through a mobile application. The system retrieves weather and heat index data from DOST-PAGASA, validates and processes the collected information, and combines it with individual risk factors to generate personalized heat-risk assessments and safety recommendations. By integrating environmental monitoring with artificial intelligence, IniTify aims to provide more accurate and relevant alerts than conventional heat advisories.
+A key innovation of the proposed system is its Emergency Assistance System, which extends beyond conventional heat alerts by providing automated support during potential heat-related emergencies. The feature activates only when multiple indicators suggest that the user may be experiencing a serious heat-related condition, such as an extreme heat-risk level, repeated failure to respond to safety prompts, and prolonged inactivity at the same location. Once these conditions are met, the application automatically notifies the user's designated emergency contact with the user's name, current risk level, last known location, the nearest hospital or emergency medical facility, and the estimated travel time. At the same time, the application displays an emergency assistance screen containing navigation to the nearest hospital, emergency contact information, and basic first-aid instructions for heat stroke while medical assistance is on the way. This multi-condition approach helps reduce false alarms while ensuring that users receive timely assistance during emergencies.
+Furthermore, IniTify incorporates offline data caching to maintain access to previously retrieved heat-risk information and essential emergency features even when internet connectivity is temporarily unavailable. By combining real-time environmental monitoring, AI-based personalized risk assessment, intelligent recommendations, emergency assistance, and offline functionality within a single mobile platform, the proposed system aims to improve early detection, preparedness, and emergency response to heat-related illnesses.
+Ultimately, this study seeks to contribute to the development of smarter, technology-driven public health solutions that enhance community resilience against extreme heat. The proposed system also supports Sustainable Development Goal (SDG) 3: Good Health and Well-being and SDG 11: Sustainable Cities and Communities by promoting preventive healthcare, improving emergency preparedness, and strengthening climate change adaptation efforts in the Philippines.
+PROCESSPlanning and requirements analysis Mobile application design and development Data retrieval, cleaning, and integration AI-based heat-risk assessment and personalized recommendations Emergency Assistance System activation (emergency contact notification, hospital navigation, and first-aid guidance) Offline data caching System testing, refinement, and evaluationPROCESSPlanning and requirements analysis Mobile application design and development Data retrieval, cleaning, and integration AI-based heat-risk assessment and personalized recommendations Emergency Assistance System activation (emergency contact notification, hospital navigation, and first-aid guidance) Offline data caching System testing, refinement, and evaluationOUTPUTIniTify mobile applicationPersonalized heat-risk assessmentReal-time heat alerts and precautionary recommendationsImproved early detection, preparedness, and response to heat-related risksAcceptable levels of functionality, usability, reliability, and user satisfactionOUTPUTIniTify mobile applicationPersonalized heat-risk assessmentReal-time heat alerts and precautionary recommendationsImproved early detection, preparedness, and response to heat-related risksAcceptable levels of functionality, usability, reliability, and user satisfactionINPUTAmbient heat data (heat index) from DOST-PAGASAIndividual risk factors (age, activity level, health condition, hydration status)Mobile device, database, AI model, and development toolsUser requirements and system specificationsUser location (GPS)INPUTAmbient heat data (heat index) from DOST-PAGASAIndividual risk factors (age, activity level, health condition, hydration status)Mobile device, database, AI model, and development toolsUser requirements and system specificationsUser location (GPS)CONCEPTUAL FRAMEWORK
+PROCESS
+Planning and requirements analysis 
+Mobile application design and development 
+Data retrieval, cleaning, and integration 
+AI-based heat-risk assessment and personalized recommendations 
+Emergency Assistance System activation (emergency contact notification, hospital navigation, and first-aid guidance) 
+Offline data caching 
+System testing, refinement, and evaluation
+PROCESS
+Planning and requirements analysis 
+Mobile application design and development 
+Data retrieval, cleaning, and integration 
+AI-based heat-risk assessment and personalized recommendations 
+Emergency Assistance System activation (emergency contact notification, hospital navigation, and first-aid guidance) 
+Offline data caching 
+System testing, refinement, and evaluation
+OUTPUT
+IniTify mobile application
+Personalized heat-risk assessment
+Real-time heat alerts and precautionary recommendations
+Improved early detection, preparedness, and response to heat-related risks
+Acceptable levels of functionality, usability, reliability, and user satisfaction
+OUTPUT
+IniTify mobile application
+Personalized heat-risk assessment
+Real-time heat alerts and precautionary recommendations
+Improved early detection, preparedness, and response to heat-related risks
+Acceptable levels of functionality, usability, reliability, and user satisfaction
+INPUT
+Ambient heat data (heat index) from DOST-PAGASA
+Individual risk factors (age, activity level, health condition, hydration status)
+Mobile device, database, AI model, and development tools
+User requirements and system specifications
+User location (GPS)
+INPUT
+Ambient heat data (heat index) from DOST-PAGASA
+Individual risk factors (age, activity level, health condition, hydration status)
+Mobile device, database, AI model, and development tools
+User requirements and system specifications
+User location (GPS)
+Figure 1. Input–Process–Output (IPO) Conceptual Framework of the IniTify Hybrid Heat-Risk Monitoring System
+The study's conceptual framework is presented in Figure 1. The inputs consist of ambient heat data (heat index) obtained from DOST-PAGASA, individual risk factors (age, activity level, health condition, and hydration status), user location (GPS), mobile devices, AI model, database and development tools, and user requirements and system specifications needed for the development of the IniTify system. These inputs undergo a series of processes, including planning and requirements analysis, mobile application design and development, data retrieval, cleaning, and integration, AI-based heat-risk assessment and generation of personalized recommendations, activation of the Emergency Assistance System, offline data caching, and system testing, refinement, and evaluation. Through these processes, the study aims to produce a functional IniTify mobile application capable of providing AI-based personalized heat-risk assessments, real-time heat alerts and precautionary recommendations, emergency assistance through automatic emergency contact notification, hospital navigation, and first-aid guidance, as well as improved early detection, preparedness, and response to heat-related risks. The study also aims to achieve acceptable levels of functionality, usability, reliability, and user satisfaction.
+DOST-PAGASA Heat Index DataDOST-PAGASA Heat Index Data
+DOST-PAGASA Heat Index Data
+DOST-PAGASA Heat Index Data
+Automated Data RetrievalAutomated Data Retrieval
+Automated Data Retrieval
+Automated Data Retrieval
+Data Cleaning & ValidationData Cleaning & Validation
+Data Cleaning & Validation
+Data Cleaning & Validation
+IniTify Mobile AppIniTify Mobile App
+IniTify Mobile App
+IniTify Mobile App
+Heat IndexHeat IndexUser Personal Information (Age, Activity Level, Hydration Status, Health Condition)User Personal Information (Age, Activity Level, Hydration Status, Health Condition)
+Heat Index
+Heat Index
+User Personal Information (Age, Activity Level, Hydration Status, Health Condition)
+User Personal Information (Age, Activity Level, Hydration Status, Health Condition)
+Decision Tree AI ModelDecision Tree AI Model
+Decision Tree AI Model
+Decision Tree AI Model
+Heat Risk Classification (Low / Moderate / High / Extreme)Heat Risk Classification (Low / Moderate / High / Extreme)
+Heat Risk Classification (Low / Moderate / High / Extreme)
+Heat Risk Classification (Low / Moderate / High / Extreme)
+Personalized RecommendationsPersonalized Recommendations
+Personalized Recommendations
+Personalized Recommendations
+Pure Notifications & AlertsPure Notifications & AlertsEmergency AssistanceEmergency Assistance
+Pure Notifications & Alerts
+Pure Notifications & Alerts
+Emergency Assistance
+Emergency Assistance
+Emergency Contact Notification   + Hospital Navigation   + First – Aid Guidance Emergency Contact Notification   + Hospital Navigation   + First – Aid Guidance 
+Emergency Contact Notification   + Hospital Navigation   + First – Aid Guidance 
+Emergency Contact Notification   + Hospital Navigation   + First – Aid Guidance 
+Offline Data CacheOffline Data Cache
+Offline Data Cache
+Offline Data Cache
+Figure 2. System Framework of the IniTify Hybrid AI-Based Heat-Risk Monitoring and Personalized Alert System
+Figure 2 presents the system framework of the proposed IniTify mobile application. The system retrieves real-time heat index data from DOST-PAGASA, which is cleaned and validated before processing. The system combines the heat index with the user's individual risk factors, including age, activity level, hydration status, and health condition, for heat-risk classification. GPS location is used separately for location-based emergency assistance, emergency contact notification, and hospital navigation. These inputs are analyzed by a Decision Tree AI Model to classify the user's heat-risk level as Low, Moderate, High, or Extreme. Based on the classification, the application provides personalized recommendations and real-time alerts. If an extreme heat risk and a possible emergency are detected, the Emergency Assistance System is activated, providing emergency contact notification, hospital navigation, and first-aid guidance. The application also utilizes offline data caching to ensure access to essential information during temporary internet connectivity issues.
+RESEARCH QUESTIONS
+       General Research Objective
+To develop IniTify, a hybrid AI-based heat-risk monitoring and personalized alert system that integrates real-time heat index data from DOST-PAGASA and individual risk factors to provide personalized heat-risk assessments, real-time alerts, and emergency assistance for individuals exposed to extreme heat.
+Specific Research Questions
+This study aims to answer the following research questions:
+What environmental and individual factors will be integrated into the IniTify system for heat-risk assessment? 
+How does the IniTify mobile application perform in testing its heat-risk assessment, monitoring, alert, and safety-support features?
+2.1 How does the Decision Tree AI model perform in providing personalized heat-risk assessment? 
+2.2 How do the weather monitoring, heat-index, alert, safety-prompt, and personalized recommendation features perform in functional and performance testing?
+2.3 How do the user-support, emergency, navigation, notification, and offline features perform in functional, reliability, usability, and emergency-escalation testing?
+3. What is the structure of the developed Decision Tree AI model for classifying users into Low, Moderate, High, and Extreme heat-risk levels?
+HYPOTHESIS
+H₀: The developed IniTify mobile application does not successfully perform its intended heat-risk assessment, monitoring, alert, safety-support, and emergency-assistance functions during researcher-conducted system testing.
+SCOPE AND DELIMITATIONS
+This study focuses on the design, development, and testing of IniTify, a hybrid AI-based heat-risk monitoring and personalized alert system that integrates official heat index data from DOST-PAGASA with individual risk factors to provide personalized heat-risk assessments and early warnings against heat-related illnesses. The system consists of a mobile application that retrieves real-time heat index data through an internet connection and generates personalized heat-risk levels based on environmental conditions and user information, including age, health condition, activity level, hydration status, and GPS location.
+The study covers the development of the system's core components, including automated heat data retrieval, data processing, AI-based heat-risk assessment using a Decision Tree model, personalized safety recommendations, real-time push notifications, an Emergency Assistance System, and offline data caching. The Emergency Assistance System is designed to activate when multiple conditions indicate a possible heat-related emergency. Once activated, it automatically sends the user's last known location, current heat-risk level, and the nearest hospital information to the designated emergency contact while providing hospital navigation and basic first-aid guidance through the mobile application. The developed system will undergo functional testing under environmental conditions in Tuguegarao City, Cagayan, to verify its ability to perform its intended functions.
+However, the study has several delimitations. IniTify is intended only as a decision-support and early warning tool and is not a medical diagnostic or treatment device. The system relies on the availability and accuracy of real-time heat index data from DOST-PAGASA, the correctness of the information provided by the user, and the user's permission to access location services. Although the application includes offline data caching, features such as real-time heat-risk updates, emergency notifications, and hospital navigation require an active internet connection. In addition, the Emergency Assistance System depends on the user having a registered emergency contact and location services enabled. The study is limited to the development and functional testing of the mobile application within the study period and under the environmental conditions of Tuguegarao City, Cagayan; therefore, the results may not be applicable to other locations or environmental settings.
+SIGNIFICANCE OF THE STUDY
+This study is expected to benefit the following:
+Individuals Frequently Exposed to Heat. The IniTify system may help students, vendors, delivery riders, construction workers, utility personnel, and other individuals frequently exposed to extreme heat by providing personalized heat-risk assessments, real-time alerts, safety recommendations, and emergency assistance features that may help reduce the risk of heat-related illnesses.
+Schools and Educational Institutions. Schools may use the findings of this study to promote heat safety awareness among students, teachers, and staff. The system may also serve as a supplementary tool for encouraging preventive measures during periods of extreme heat.
+Local Government Units (LGUs) and Disaster Risk Reduction and Management Offices (DRRMOs). The findings of this study may assist LGUs and DRRMOs in exploring AI-based mobile technologies for heat-risk monitoring, early warning, and emergency preparedness, complementing existing climate adaptation and disaster risk reduction initiatives.
+Public Health Agencies. Public health agencies may use the findings as a reference in promoting heat-health awareness and in exploring technology-assisted approaches to preventing heat-related illnesses and improving emergency response.
+Software Developers and Technology Innovators. This study may provide insights into the design and development of AI-based mobile applications that integrate environmental data, personal risk factors, and emergency assistance features to support health monitoring and public safety.
+Future Researchers. The findings of this study may serve as a reference for future studies involving heat-risk monitoring, artificial intelligence, mobile health applications, emergency response systems, and climate change adaptation technologies.
+DEFINITION OF TERMS
+Activity Level. The degree of physical exertion of the user, such as low, moderate, or high, considered by the IniTify system in estimating heat-related risk.
+Ambient Heat Data. Environmental information, including temperature, relative humidity, and heat index values obtained from DOST-PAGASA, used by the IniTify system to assess surrounding heat conditions.
+Artificial Intelligence (AI). The technology integrated into the IniTify system that uses a Decision Tree model to analyze environmental and individual data for estimating heat-related risk and generating personalized recommendations.
+Data Cleaning and Validation. The process of checking, organizing, and verifying retrieved heat index data to ensure its accuracy and reliability before it is analyzed by the system.
+Decision Tree Model. A machine learning algorithm used by the IniTify system to classify a user's heat-risk level based on environmental conditions and individual risk factors.
+DOST-PAGASA. The Philippine Atmospheric, Geophysical and Astronomical Services Administration, which serves as the official source of real-time heat index data used by the IniTify system.
+Emergency Assistance System. A feature of the IniTify system that activates when multiple conditions indicate a possible heat-related emergency. It automatically notifies the user's designated emergency contact, provides hospital navigation, and displays basic first-aid guidance.
+GPS Location. The geographical location of the user obtained through the mobile device's Global Positioning System (GPS), used for location-based heat-risk assessment, emergency contact notification, and hospital navigation.
+IniTify. The hybrid AI-based heat-risk monitoring and personalized alert system developed in this study that integrates real-time heat index data from DOST-PAGASA with individual risk factors to provide personalized heat-risk assessments, alerts, and emergency assistance.
+Heat Index. A measure that combines air temperature and relative humidity to represent the apparent temperature experienced by the user.
+Heat-Related Risk. The likelihood that a user may experience harmful effects from heat exposure based on environmental conditions and individual risk factors analyzed by the IniTify system.
+Hybrid Monitoring System. A system that combines real-time environmental heat data and individual risk factors within a single mobile application to provide personalized heat-risk assessments.
+Individual Risk Factors. Personal characteristics considered by the IniTify system in estimating heat-related risk, including age, health condition, activity level, and hydration status.
+Mobile Application. The smartphone-based platform through which the IniTify system retrieves heat index data, processes user information, generates heat-risk assessments, displays alerts, and provides emergency assistance.
+Offline Data Cache. A feature that temporarily stores recently retrieved heat-risk information and essential system data, allowing limited access to important information when internet connectivity is unavailable.
+Personalized Recommendations. Safety measures generated by the IniTify system, such as hydration reminders, rest, seeking shade, or limiting outdoor activities, based on the user's estimated heat-risk level.
+Push Notifications. Real-time notifications sent by the IniTify mobile application to inform users about their current heat-risk level and recommended precautionary actions.
+Real-Time Monitoring. The continuous retrieval and processing of current heat index data together with user information to provide timely heat-risk assessments and alerts.
+REVIEW OF RELATED LITERATURE AND RELATED STUDIES
+REVIEW OF RELATED LITERATURE (RRL)
+Theoretical Foundations of the Study
+The increasing frequency and intensity of extreme heat events due to climate change have highlighted the need for more advanced systems that can support heat-risk prevention and public health preparedness. Traditional heat warning systems primarily issue generalized advisories based on meteorological conditions. However, recent developments emphasize the importance of integrating environmental information with individual risk factors to provide more personalized and effective heat-risk assessments. Heat-health warning systems, artificial intelligence (AI), and mobile health (mHealth) technologies have therefore become essential tools in improving early detection, timely communication, and emergency response to heat-related illnesses (World Health Organization [WHO], 2026). 
+The development of IniTify is anchored on three theoretical foundations: the Input–Process–Output (IPO) Model, the Heat Health Warning System (HHWS) Framework, and the Decision Tree-Based Decision Support Framework. These theories explain how environmental and personal information are transformed into personalized heat-risk assessments, timely alerts, and emergency assistance.
+Input–Process–Output (IPO) Model
+The Input–Process–Output (IPO) Model serves as the primary systems development framework of this study. The model explains that every information system receives inputs, processes them through organized procedures, and generates outputs that achieve a desired objective. Because of its logical and systematic structure, the IPO Model has been widely applied in systems analysis and information systems development (Laudon & Laudon, 2022).
+In the proposed IniTify system, the inputs include real-time heat index data retrieved from DOST-PAGASA and user-specific information such as age, health condition, activity level, hydration status, and GPS location. These inputs undergo several processes, including automated data retrieval, data cleaning and validation, Decision Tree-based heat-risk analysis, personalized recommendation generation, and emergency condition assessment. The processed information produces outputs, including personalized heat-risk classifications, real-time heat alerts, safety recommendations, emergency contact notification, hospital navigation, first-aid guidance, and offline access to essential emergency information. Guided by the IPO Model, the IniTify system follows a structured process that transforms environmental and personal data into meaningful information that supports heat-risk prevention and emergency response.
+Heat Health Warning System (HHWS) Framework
+The Heat Health Warning System (HHWS) Framework provides the public health foundation of this study. According to the World Health Organization (WHO) and the World Meteorological Organization (WMO), Heat Health Warning Systems integrate meteorological information with health risk assessments, communication strategies, and preparedness measures to reduce heat-related illnesses and deaths during periods of extreme heat. These systems are intended not only to provide timely warnings but also to encourage preventive actions before adverse health effects occur (WHO & WMO, 2016). 
+Recent WHO guidance further emphasizes that effective heat-health action plans should incorporate early warning systems, identify vulnerable populations, strengthen communication strategies, and improve emergency preparedness to reduce the health impacts of extreme heat (WHO Regional Office for Europe, 2026). 
+IniTify adopts the principles of the HHWS Framework by integrating official heat index data from DOST-PAGASA with individual risk factors to generate personalized heat-risk assessments. Through real-time alerts, precautionary recommendations, and emergency assistance features, the system supports early detection of heat-related risks and promotes timely preventive actions among individuals exposed to extreme heat.
+Decision Tree-Based Decision Support Framework
+The Decision Tree-Based Decision Support Framework serves as the intelligent decision-making foundation of this study. Decision Trees are among the most widely used classification techniques in artificial intelligence because they classify data using a sequence of logical decision rules. Their transparent and interpretable structure makes them particularly suitable for healthcare applications where decisions should be understandable and explainable (Breiman et al., 1984; Quinlan, 1986).
+In IniTify, the Decision Tree model analyzes real-time heat index data together with individual risk factors—including age, health condition, activity level, hydration status, and GPS location—to classify users into different heat-risk levels. Based on the resulting classification, the system generates personalized safety recommendations and real-time alerts. When multiple indicators suggest a possible heat-related emergency, the system activates its Emergency Assistance System, which automatically notifies the designated emergency contact, identifies the nearest hospital, provides navigation assistance, and displays first-aid guidance while awaiting medical assistance. This application of Decision Tree analysis is consistent with recent studies showing that machine learning techniques can improve heat-health warning systems by providing more accurate and data-driven risk classification for early intervention. 
+Key Concepts 
+2.1 Climate Change, Extreme Heat, and Heat-Related Illnesses
+Climate change has contributed to a significant increase in global temperatures, resulting in more frequent, prolonged, and intense heat events. According to the Intergovernmental Panel on Climate Change (IPCC, 2023), human-induced climate change has increased the likelihood of extreme heat occurrences across many regions of the world. Extreme heat poses serious public health risks, particularly for older adults, children, outdoor workers, and individuals with pre-existing medical conditions.
+Heat-related illnesses occur when the body is unable to regulate its internal temperature due to prolonged exposure to high temperatures. These illnesses range from mild conditions such as heat cramps and heat exhaustion to severe and life-threatening conditions such as heat stroke. The World Health Organization (2024) identifies extreme heat as one of the leading weather-related causes of illness and death, emphasizing the importance of early warning systems and preventive interventions to reduce heat-related health risks. As climate change continues to intensify heat events, innovative technologies capable of providing timely warnings and personalized recommendations have become increasingly important in protecting public health (WHO, 2024).
+2.2 Heat Index and Official Meteorological Data
+The heat index is a measure of the apparent temperature experienced by the human body, combining air temperature and relative humidity to estimate how hot the environment feels. High humidity reduces the body's ability to cool itself through sweating, making the perceived temperature higher than the actual air temperature. Because of this, the heat index is widely used by meteorological agencies and public health organizations to assess heat-related health risks and issue appropriate heat advisories (National Weather Service [NWS], n.d.).
+In the Philippines, the Philippine Atmospheric, Geophysical and Astronomical Services Administration (DOST-PAGASA) serves as the official government agency responsible for monitoring weather conditions and issuing heat index advisories. These advisories provide timely information regarding potentially dangerous heat conditions and are used by government agencies, schools, and the public to prepare for periods of extreme heat (DOST-PAGASA, 2024). IniTify utilizes real-time heat index data from DOST-PAGASA to ensure that heat-risk assessments are based on accurate, reliable, and officially recognized meteorological information.
+2.3 Individual Risk Factors in Heat Exposure
+Although environmental conditions significantly influence heat exposure, individual characteristics also affect a person's susceptibility to heat-related illnesses. Factors such as age, health condition, physical activity level, and hydration status influence the body's ability to regulate temperature and respond to heat stress. Older adults, individuals with chronic illnesses, physically active persons, and those experiencing dehydration are generally at greater risk of developing heat-related illnesses during periods of extreme heat (World Health Organization, 2024).
+IniTify incorporates these individual risk factors into its heat-risk assessment process. By combining personal information with real-time environmental conditions, the system generates personalized heat-risk classifications and safety recommendations that are more appropriate to each user's condition than generalized heat advisories.
+2.4 Decision Tree for Heat-Risk Assessment
+A Decision Tree is a supervised machine learning algorithm used for classification and prediction by organizing data into a tree-like structure consisting of decision nodes and outcome branches. Each decision is based on specific conditions or attributes, allowing the algorithm to classify data into predefined categories (Breiman et al., 1984; Quinlan, 1986).
+Decision Trees are widely used in healthcare because they provide transparent and interpretable decision-making processes. Unlike some machine learning algorithms that function as "black boxes," Decision Trees clearly show how each decision is made, making them suitable for applications where users and developers need understandable results. In IniTify, the Decision Tree model analyzes official heat index data together with individual risk factors to classify users into Low, Moderate, High, or Extreme heat-risk levels. Based on the resulting classification, the system generates personalized alerts, precautionary recommendations, and emergency assistance when necessary.
+2.5 Mobile Health (mHealth) Applications
+Mobile health, commonly referred to as mHealth, involves the use of mobile devices and wireless technologies to support healthcare services, health monitoring, disease prevention, and health promotion. The World Health Organization recognizes mHealth as an important component of digital health because it improves access to health information, facilitates timely communication, and supports public health interventions through mobile technologies (WHO, 2019).
+IniTify is developed as an mHealth application that enables users to receive personalized heat-risk assessments, real-time alerts, and safety recommendations directly through their smartphones. By utilizing mobile technology, the system promotes timely access to heat-related information and encourages preventive actions during periods of extreme heat.
+2.6 GPS-Based Location Services
+Global Positioning System (GPS) technology enables mobile applications to determine a user's geographic location accurately. GPS-based location services are widely used in navigation, emergency response, disaster management, and healthcare applications because they provide real-time location information necessary for timely assistance (Android Developers, n.d.).
+In IniTify, GPS is used to determine the user's current location, identify the nearest hospital during heat-related emergencies, provide navigation assistance, and transmit the user's last known location to the designated emergency contact when emergency conditions are detected. This functionality enhances the system's ability to provide immediate assistance during extreme heat events.
+2.7 Emergency Assistance Systems
+Emergency assistance systems are designed to provide immediate support during critical situations by facilitating communication, navigation, and access to emergency services. Mobile-based emergency systems commonly include emergency contact notification, location sharing, hospital navigation, and first-aid guidance to improve response time and increase the likelihood of timely medical intervention.
+The Emergency Assistance System integrated into IniTify activates only when multiple indicators suggest a possible heat-related emergency. Once activated, the system automatically notifies the user's designated emergency contact, shares the user's last known location, identifies the nearest hospital, provides navigation assistance, and displays first-aid instructions while medical assistance is being sought. This integrated approach supports timely response and strengthens user safety during severe heat exposure.
+2.8 Offline Data Cache
+Offline data caching refers to the temporary storage of essential application data on a mobile device, allowing users to access critical information even when internet connectivity is unavailable. Offline functionality improves the reliability of mobile applications, particularly during emergencies or network disruptions, by ensuring that important information remains accessible.
+In IniTify, offline data caching stores essential emergency information, including first-aid guidance and previously retrieved heat-risk information. This feature allows users to access critical safety information even when real-time internet connectivity is temporarily unavailable, improving the system's reliability during emergency situations.
+Relevant Literature
+3.1 Heat Health Warning Systems
+Heat Health Warning Systems (HHWS) have become an essential public health strategy for reducing the impacts of extreme heat on vulnerable populations. These systems combine meteorological forecasts with health-based information to provide timely warnings that encourage individuals and communities to take preventive measures before dangerous heat conditions occur. According to the World Health Organization (WHO) and the World Meteorological Organization (WMO), effective HHWS should include reliable weather monitoring, risk communication, public awareness, and coordinated emergency response to minimize heat-related illnesses and deaths (WHO & WMO, 2015).
+Recent studies have emphasized the need to improve traditional heat warning systems by making them more personalized and responsive to individual risk factors. Ebi et al. (2021) explained that conventional heat advisories often provide generalized warnings based solely on weather conditions, which may not adequately represent the varying levels of heat vulnerability among different individuals. The study recommended integrating personal characteristics such as age, health condition, and activity level into heat-health warning systems to improve risk communication and encourage more appropriate protective actions.
+Similarly, Boeckmann and Rohn (2021) reported that personalized heat warning systems are more effective than generalized advisories because they consider differences in individual susceptibility to heat exposure. Their findings showed that providing users with risk-specific recommendations increases awareness and promotes preventive behaviors, particularly among high-risk groups such as older adults and outdoor workers.
+Advances in digital technology have also improved the implementation of heat-health warning systems through mobile applications. A review by the World Health Organization Regional Office for Europe (2026) highlighted that modern heat-health action plans increasingly utilize mobile technologies to deliver real-time alerts, location-specific information, and personalized recommendations. These digital approaches improve the accessibility of heat-risk information and enable users to respond more quickly to changing environmental conditions.
+The reviewed literature demonstrates that current Heat Health Warning Systems are evolving from generalized weather advisories toward personalized, technology-assisted approaches that integrate environmental information with individual characteristics. However, many existing systems primarily focus on issuing warnings and public advisories without incorporating intelligent risk classification, emergency assistance, or integrated mobile-based decision support. The proposed IniTify system addresses these gaps by combining official heat index data from DOST-PAGASA, individual risk factors, Decision Tree-based heat-risk analysis, and emergency assistance features within a single mobile application to provide more personalized and actionable heat-risk management.
+3.2 Decision Tree Applications in Healthcare and Risk Prediction
+Decision Trees are among the most widely used machine learning algorithms for classification and prediction because of their simplicity, transparency, and interpretability. Unlike more complex artificial intelligence models, Decision Trees classify data by applying a sequence of logical rules, making it easier for developers and users to understand how decisions are generated (Quinlan, 1986). Their ability to produce clear decision paths has made them widely applicable in healthcare, where explainable and reliable decision-making is essential.
+In the healthcare sector, Decision Trees have been successfully applied to disease diagnosis, patient risk assessment, and clinical decision support. A review by Tohka and van Gils (2021) explained that interpretable machine learning algorithms such as Decision Trees are valuable in health-related applications because they allow healthcare professionals to understand how predictions are made while maintaining acceptable predictive performance. Their transparency also increases user trust compared to complex "black-box" algorithms.
+Similarly, Sidey-Gibbons and Sidey-Gibbons (2019) reported that Decision Trees are effective in predicting health outcomes and classifying patient risk using multiple health-related variables. Their study emphasized that Decision Trees are particularly useful when decision rules need to be easily interpreted, making them suitable for healthcare applications that require timely intervention and understandable recommendations.
+Recent studies have also highlighted the growing role of machine learning in environmental health and climate-related risk assessment. Artificial intelligence models have been used to analyze environmental conditions together with individual health information to support early warning systems and improve risk prediction. These intelligent systems enable more accurate classification of health risks and provide personalized recommendations based on both environmental and personal factors (World Health Organization, 2021).
+The reviewed literature demonstrates that Decision Trees provide an effective and explainable approach for health-risk classification and decision support. However, most existing healthcare applications focus on disease diagnosis or clinical prediction and are not specifically designed to assess heat-related health risks. Moreover, few studies integrate official meteorological data, individual risk factors, and emergency response features into a single mobile application. The proposed IniTify system addresses these gaps by utilizing a Decision Tree algorithm to analyze official heat index data from DOST-PAGASA together with user-specific information, enabling personalized heat-risk assessment, real-time safety recommendations, and automated emergency assistance during extreme heat events.
+3.3 Mobile Health (mHealth) Applications
+Mobile health (mHealth) refers to the use of mobile devices, such as smartphones and tablets, to deliver healthcare services, monitor health conditions, and promote disease prevention. With the widespread use of mobile technologies, mHealth has become an important component of digital healthcare by providing users with convenient access to health information, real-time monitoring, and personalized health interventions. According to the World Health Organization (2019), mHealth applications enhance healthcare accessibility and strengthen health systems by supporting health promotion, disease surveillance, and timely communication between users and healthcare providers.
+Recent studies have demonstrated the effectiveness of mobile health applications in improving disease prevention and encouraging healthy behaviors. Marcolino et al. (2018) found that mHealth applications contribute to better health outcomes by providing users with timely reminders, personalized recommendations, and continuous monitoring of health conditions. Similarly, a systematic review by Wang et al. (2023) reported that mobile health technologies significantly improve users' adherence to preventive health practices through real-time notifications and personalized feedback, making them valuable tools for public health interventions.
+In climate-related health management, mobile applications have increasingly been utilized to provide heat alerts, environmental information, and health recommendations during extreme weather events. These applications enable users to receive location-specific information, monitor environmental conditions, and take preventive measures before heat-related illnesses occur. The World Health Organization (2024) emphasized that digital technologies, including mobile applications, play an important role in strengthening climate resilience by improving public awareness, supporting early warning systems, and promoting timely responses to heat-related risks.
+The reviewed literature indicates that mobile health applications are effective platforms for delivering personalized health information and improving preventive healthcare. However, many existing applications focus primarily on health monitoring or general wellness and do not integrate official meteorological data, intelligent heat-risk assessment, emergency response features, and personalized recommendations into a single platform. The proposed IniTify system addresses these limitations by combining official heat index data from DOST-PAGASA, Decision Tree-based heat-risk assessment, personalized safety recommendations, GPS-enabled emergency assistance, and offline emergency information within one mobile application. Through these integrated features, IniTify aims to enhance users' preparedness and response to extreme heat events.
+3.4 GPS-Based Location Services in Mobile Health Applications
+Global Positioning System (GPS) technology has become an essential component of mobile health (mHealth) applications by enabling location-aware services that support health monitoring, emergency response, and navigation. GPS allows mobile applications to determine a user's geographic location in real time, making it possible to deliver location-specific information and services. According to the Android Developers documentation (Google, n.d.), location services combine GPS, Wi-Fi, cellular networks, and sensors to provide accurate positioning while optimizing battery consumption.
+Recent studies have demonstrated the importance of GPS technology in healthcare and emergency management. Ramesh et al. (2023) explained that GPS-enabled mobile applications improve emergency response by allowing users' locations to be shared with healthcare providers and emergency contacts, reducing response time during medical emergencies. Similarly, Boulos et al. (2011) emphasized that location-based services have significantly improved healthcare delivery by supporting navigation, disease surveillance, emergency management, and public health interventions.
+Location-based technologies are also increasingly used in disaster preparedness and climate-related applications. During emergencies, GPS enables users to identify nearby healthcare facilities, receive location-specific alerts, and navigate safely to evacuation sites or medical centers. Such capabilities enhance situational awareness and facilitate timely access to healthcare services, particularly during environmental hazards and extreme weather events (World Health Organization, 2024).
+The reviewed literature demonstrates that GPS technology plays a significant role in improving emergency response and delivering location-based healthcare services. However, many existing mobile applications use GPS primarily for navigation and do not integrate it with intelligent health-risk assessment and emergency activation. The proposed IniTify system addresses this limitation by integrating GPS technology with Decision Tree-based heat-risk analysis. When the system detects a possible heat-related emergency, it automatically retrieves the user's current location, identifies the nearest hospital, provides navigation assistance, and shares the user's last known location with the designated emergency contact. These integrated functions strengthen emergency preparedness and support timely medical intervention during extreme heat events.
+3.5 Emergency Assistance and Hospital Navigation Systems
+Emergency assistance systems have become an important component of modern mobile health applications by enabling timely communication and immediate support during medical emergencies. These systems are designed to reduce response time by automatically notifying emergency contacts, providing location information, and directing users to nearby healthcare facilities. According to the World Health Organization (2021), digital health technologies can strengthen emergency preparedness and improve access to healthcare services by facilitating rapid communication and informed decision-making during emergencies.
+Recent studies have shown that integrating emergency assistance features into mobile applications enhances users' safety and improves emergency response. Martínez-Pérez et al. (2015) reported that mobile health applications equipped with emergency notification and location-sharing capabilities enable faster medical intervention by providing responders with essential information, such as the user's location and health status. Similarly, Kringle et al. (2020) emphasized that emergency alert systems combined with real-time location services improve coordination among patients, caregivers, and healthcare providers, particularly during time-sensitive medical situations.
+Hospital navigation has also become an important feature of emergency healthcare applications. Location-based navigation systems help users identify the nearest healthcare facility and provide optimized travel directions, reducing delays in obtaining medical assistance. Google Maps Platform (Google, n.d.) supports location-aware applications by enabling developers to integrate mapping, route guidance, and nearby healthcare facility searches into mobile applications. Such technologies have been widely adopted in digital health systems to improve accessibility and emergency response.
+The reviewed literature indicates that emergency assistance and hospital navigation technologies significantly improve users' access to emergency care by facilitating communication and providing accurate location-based guidance. However, many existing applications activate emergency features manually, requiring users to request assistance themselves. This may be difficult or impossible during severe heat-related emergencies when individuals become unconscious or unable to use their mobile devices. The proposed IniTify system addresses this limitation by automatically activating its Emergency Assistance System when multiple indicators suggest a possible heat-related emergency. Once activated, the system sends the user's last known location and heat-risk level to the designated emergency contact, identifies the nearest hospital, provides navigation assistance, and displays first-aid guidance while waiting for medical assistance. These integrated features enhance emergency preparedness and support timely intervention during extreme heat events.
+3.6 Offline Mobile Technologies
+Offline functionality has become an essential feature of modern mobile applications, particularly those designed for emergency response and public health. Offline mobile technologies enable applications to continue providing access to essential information and selected features even when internet connectivity is unavailable. By storing important data locally on the user's device, offline systems improve reliability and ensure that critical information remains accessible during emergencies or network interruptions (Google Developers, n.d.).
+The World Health Organization (2021) emphasizes that digital health technologies should be designed to remain functional in various operating conditions, including areas with limited internet access. In disaster situations and public health emergencies, interruptions in communication networks may delay access to online services. Offline capabilities help maintain access to important health information, allowing users to continue receiving guidance even when real-time connectivity is temporarily unavailable.
+Recent studies have also highlighted the importance of offline functionality in mobile health applications. Olla and Shimskey (2015) reported that mobile health systems with offline data storage improve service continuity by allowing users to access previously stored health information during connectivity interruptions. Similarly, research on digital health applications has shown that offline data caching enhances system reliability and user accessibility, particularly in rural communities and disaster-prone areas where internet connectivity may be inconsistent (World Health Organization, 2021).
+The reviewed literature demonstrates that offline mobile technologies improve the reliability and accessibility of digital health applications by ensuring continuous access to critical information during network disruptions. However, many existing heat-health applications rely heavily on continuous internet connectivity, limiting their usefulness when users lose network access during emergencies. The proposed IniTify system addresses this limitation by incorporating an Offline Data Cache that stores essential emergency information, including first-aid guidance, emergency contact details, and the user's most recent heat-risk assessment. This feature allows users to access critical safety information even when internet connectivity is temporarily unavailable, improving the system's reliability and supporting timely response during heat-related emergencies.
+3.7 Synthesis of the Literature and Research Gap
+The reviewed literature demonstrates that climate change has significantly increased the occurrence and severity of extreme heat events, resulting in greater risks of heat-related illnesses and emphasizing the need for effective heat-health warning systems. Existing studies consistently recognize the importance of integrating meteorological information, digital health technologies, and artificial intelligence to improve early detection and prevention of heat-related health risks. Likewise, previous research has shown that mobile health applications, Decision Tree algorithms, GPS-based location services, and emergency response technologies can enhance health monitoring, personalized recommendations, and timely intervention during medical emergencies.
+Despite these advancements, several limitations remain in existing studies and applications. Many heat-health warning systems continue to provide generalized advisories based primarily on environmental conditions without considering individual risk factors such as age, health condition, activity level, and hydration status. Similarly, most mobile health applications focus on monitoring health conditions or providing health information but do not integrate official meteorological data with intelligent heat-risk assessment. Existing emergency applications also commonly require users to manually activate emergency features, which may not be practical when individuals are experiencing severe heat-related illnesses and are unable to use their mobile devices. Furthermore, limited studies have integrated personalized heat-risk assessment, automatic emergency assistance, hospital navigation, first-aid guidance, and offline functionality within a single mobile application.
+The identified gaps provide the basis for the development of IniTify. Unlike existing systems, IniTify integrates official heat index data from DOST-PAGASA with individual risk factors using a Decision Tree-based heat-risk assessment model to generate personalized heat-risk classifications and precautionary recommendations. In addition, the system incorporates an Emergency Assistance System that automatically notifies designated emergency contacts, provides hospital navigation, displays first-aid guidance, and stores essential emergency information through an offline data cache when a possible heat-related emergency is detected. By combining these features into a single mobile application, IniTify aims to strengthen heat-risk preparedness, improve early intervention, and support timely emergency response among individuals exposed to extreme heat.
+The reviewed literature therefore supports the need for the proposed study and highlights its potential contribution to digital health, climate adaptation, and heat-related illness prevention. Through the integration of official meteorological data, personalized risk assessment, and emergency assistance features, the study seeks to address existing limitations in current heat-health warning systems and provide a more comprehensive and practical solution for heat-risk management.
+Research Gaps in the Literature 
+The reviewed literature emphasizes the importance of heat-health warning systems, mobile health technologies, Decision Tree algorithms, GPS-based location services, emergency assistance systems, and offline mobile technologies in improving health monitoring and emergency preparedness. Existing literature highlights the benefits of integrating environmental information with digital technologies to promote timely interventions and reduce the risks associated with extreme heat.
+Despite these advancements, several gaps remain. Most literature discusses these technologies independently rather than as components of a unified heat-risk management system. There is limited discussion on integrating official heat index data from government meteorological agencies, individual risk factors, and Decision Tree-based risk assessment within a single mobile application. Likewise, few publications describe the incorporation of automatic emergency assistance, hospital navigation, first-aid guidance, and offline emergency information as complementary features of personalized heat-health warning systems.
+These gaps indicate the need for a comprehensive mobile application capable of combining environmental monitoring, intelligent risk assessment, personalized recommendations, and emergency response into one integrated platform. The proposed IniTify system addresses these limitations by integrating official DOST-PAGASA heat index data with individual risk factors through a Decision Tree algorithm while incorporating GPS-based emergency assistance and offline emergency support to improve preparedness against heat-related illnesses.
+REVIEW OF RELATED STUDIES
+Recent studies have emphasized the importance of personalized heat-risk monitoring and artificial intelligence in improving public health preparedness during extreme heat events. Oberai et al. (2025) developed an individualized digital heat warning system for older adults that provided personalized alerts based on environmental conditions and individual characteristics. Their findings revealed that customized warnings increased users' awareness and encouraged preventive behaviors such as proper hydration and limiting outdoor activities. This study supports the development of IniTify because it demonstrates that personalized heat advisories are more effective than generalized weather warnings. 
+Similarly, Kacker et al. (2025) designed a personalized heat stress forecasting system that integrated environmental hazards, vulnerability indicators, and exposure levels. The researchers concluded that combining these factors produced more accurate heat-risk predictions than relying solely on meteorological information. Their study provides a strong foundation for IniTify, which likewise combines environmental data with individual risk factors but further incorporates AI-driven decision-making and mobile-based recommendations. 
+The integration of artificial intelligence into heat monitoring has also shown promising results. Hussain et al. (2024) developed an AI-integrated Internet of Things (IoT) heat monitoring system that collected real-time temperature and humidity data to predict heat-related risks. Their findings demonstrated that AI significantly improved the accuracy and responsiveness of heat monitoring compared with traditional approaches. Likewise, Bonifacio and Rojas (2025) proposed an AI-IoT predictive monitoring system that combined environmental and physiological data to provide early heat-risk alerts and timely preventive recommendations. Both studies validate the effectiveness of AI in enhancing heat-risk prediction and support the use of intelligent technologies in IniTify. 
+In another study, Wang et al. (2025) proposed a graded Heat Health Warning System that classified warning levels according to their associated health impacts. The researchers found that higher warning levels were significantly associated with increased mortality risk, emphasizing the importance of health-based warning classifications. While the study focused on population-level risk categories, it provides a valuable basis for IniTify, which extends the concept by generating individualized heat-risk assessments tailored to each user's vulnerability and health condition. 
+Overall, the reviewed studies demonstrate that personalized heat-warning systems, artificial intelligence, and IoT technologies have significantly enhanced heat-risk monitoring and early warning capabilities. However, these studies generally focused on separate components rather than integrating official meteorological data, individual risk factors, AI-based decision-making, emergency assistance, and offline functionality into a single mobile platform. These identified gaps justify the development of IniTify as a comprehensive AI-based heat-risk monitoring and personalized alert system.
+SYNTHESIS
+The reviewed literature and related studies consistently emphasize that extreme heat has become an increasingly serious public health concern due to climate change, highlighting the need for more effective and personalized heat-risk monitoring systems. Existing research demonstrates that Heat Health Warning Systems, mobile health technologies, artificial intelligence, Decision Tree algorithms, GPS-based services, and emergency response systems contribute significantly to improving heat-risk prediction, early warning, and public health preparedness. 
+Despite these advancements, the literature also reveals important limitations. Most existing systems provide generalized heat advisories based primarily on environmental conditions without considering individual characteristics such as age, health condition, activity level, hydration status, and location. Furthermore, many mobile health applications focus on monitoring or information dissemination without integrating intelligent heat-risk assessment, automated emergency response, hospital navigation, first-aid guidance, and offline accessibility within a single platform. 
+The reviewed studies further indicate that personalized heat-warning systems and AI-based technologies improve users' awareness and preventive behaviors. However, previous research has generally examined these technologies independently rather than combining them into a unified mobile application that supports real-time monitoring, personalized recommendations, and emergency assistance. 
+These findings provide a strong foundation for the present study. IniTify addresses the identified research gaps by integrating official DOST-PAGASA heat index data, individual risk factors, a Decision Tree AI model, GPS-enabled emergency assistance, hospital navigation, first-aid guidance, and offline data caching into a single mobile application. By combining these features, the proposed system aims to provide more accurate personalized heat-risk assessments, enhance preparedness against extreme heat, improve early intervention, and strengthen emergency response for individuals exposed to high-temperature environments. 
+III. RESEARCH METHODOLOGY
+RESEARCH DESIGN
+This study employed the Research and Development (R&D) design, which is appropriate for designing, developing, testing, and evaluating technological innovations. The R&D approach enabled the researchers to systematically create the IniTify mobile application and assess its functionality and user acceptability.
+The system was developed to integrate official heat index data from DOST-PAGASA with individual risk factors such as age, activity level, hydration status, health condition, and GPS location. These data were processed using a Decision Tree AI model to generate personalized heat-risk assessments, real-time alerts, safety recommendations, and emergency assistance. After development, the application underwent expert validation, functional testing, integration testing, and user evaluation to determine whether it met the desired quality standards. 
+SAMPLING PROCEDURE AND SAMPLES
+This study did not involve human respondents, survey participants, or a respondent-based sampling procedure. The researchers themselves conducted the system evaluation using predefined test cases and controlled testing scenarios. The purpose of the testing was to determine whether the implemented functions operated according to their specified expected behavior.
+A total of 25 predefined test cases were used to validate the Decision Tree AI model. The cases represented different combinations of heat index, age, health condition, hydration status, and activity level. In addition, the researchers conducted repeated functional tests, performance measurements, failure-condition tests, task-based usability tests, and emergency alert and escalation scenarios. These tests provided the empirical basis for evaluating the implemented system without requiring external respondents.
+DATA GATHERING METHODS
+Instruments and Tools
+The study will utilize the following instruments and tools for the development, testing, and evaluation of the IniTify system:
+DOST-PAGASA iHeatMAP – Served as the official source of real-time heat index and weather data used for heat-risk monitoring and analysis. 
+ IniTify Android Mobile Application – The primary system developed in this study, which provides personalized heat-risk assessments, real-time alerts, safety recommendations, and emergency assistance features. 
+Firebase/MySQL Database – Used to store and manage user information, environmental data, and system-generated results. 
+Decision Tree AI Model – Processed environmental and individual risk factors to classify users into Low, Moderate, High, or Extreme heat-risk levels. 
+Android Smartphone with GPS and Internet Connectivity – Used to retrieve real-time heat index data, determine the user's location, display notifications, and activate emergency assistance features. 
+Development Tools – Software such as Android Studio, the programming language used for the application, and the Firebase platform were utilized to develop, implement, and test the IniTify mobile application. 
+System Validation
+The developed application underwent several validation and testing procedures before final evaluation:
+Functional Testing – verified whether the implemented system features performed their specified functions correctly.
+Performance Testing – measured response times for selected operations under Wi-Fi, mobile-data, and offline conditions.
+Reliability and Failure-Condition Testing – evaluated the application's handling of selected connectivity, permission, and offline conditions.
+AI Model Validation – compared the Decision Tree model's actual classifications with the expected classifications across 25 predefined test cases.
+Data Collection Procedure
+To obtain the need for the study, the following procedure were undertaken by the researchers. 
+The researchers reviewed related literature and studies to identify the necessary features, system requirements, and technologies for the development of the IniTify mobile application. 
+The IniTify mobile application was developed using Android Studio and integrated with Firebase/MySQL. The system was configured to retrieve official heat index data from DOST-PAGASA and collect user information, including age, activity level, hydration status, health condition, and GPS location. 
+The application retrieved real-time heat index data from DOST-PAGASA and combined it with the user's personal information. These data were processed using the Decision Tree AI model to classify users into Low, Moderate, High, or Extreme heat-risk levels and generate personalized recommendations and real-time alerts. 
+The developed system underwent expert validation, functional testing, integration testing, and AI model validation to verify that all system components operated correctly and produced accurate heat-risk classifications. 
+After successful testing and validation, the IniTify mobile application was implemented to demonstrate its capability to provide personalized heat-risk monitoring, real-time alerts, safety recommendations, and emergency assistance based on official heat index data and individual risk factors. 
+DATA ANALYSIS
+The collected testing data were analyzed using descriptive measures appropriate to the researcher-conducted system evaluation. For the Decision Tree AI model, the expected and actual classifications of the 25 predefined test cases were compared. The validation success rate was computed as the percentage of cases in which the actual result matched the expected result. For functional and reliability testing, successful and failed executions were summarized using frequencies and percentages. Performance results were summarized using mean completion or response times. Task-based usability was assessed using task completion, recorded errors, and completion time. Emergency alert and escalation testing was interpreted based on whether each predefined scenario produced the expected system behavior.
+Validation Success Rate – used to determine the percentage of predefined AI test cases in which the actual classification matched the expected classification.
+Functional Pass Rate – used to determine the percentage of functional test executions that successfully produced the expected result.
+Mean Response/Completion Time – used to summarize the recorded time required for selected system operations and task completion.
+Failure-Condition Success Rate – used to determine the proportion of selected failure-condition trials that were successfully handled by the application.
+Scenario Pass Result – used to determine whether each predefined emergency alert and escalation scenario produced its specified expected outcome.
+IV. PRESENTATION, ANALYSIS AND INTERPRETATION OF DATA
+Data Findings
+Table 1. Environmental and Individual Factors Used in IniTify Heat-Risk Assessment
+Category
+Factor
+Integration in Initify
+Environmental
+Heat index
+Represents the current environmental heat condition used in determining the user's heat-risk level.
+Individual
+Age
+Used as a personal risk factor in the heat-risk assessment.
+Individual
+Health Condition
+Used to account for documented health conditions that may increase heat-related vulnerability.
+Individual
+Activity Level
+Used to account for the user's level of physical activity during heat exposure.
+Individual
+Hydration Status
+Used to account for the user's hydration condition during heat exposure.
+Table 1 shows the individual factors that are included in the IniTify system for heat-risk assessment. The results show that the heat index is the factor used. The individual factors are age, health condition, activity level and hydration status. These factors help the system understand both the heat in the environment and the personal details of the user.
+The heat index is the environmental factor in the assessment. It reflects the heat that a person might come into contact with. On the hand the individual factors give more details about each person. Age tells the system how old the user is. Health condition includes any known issues that could make someone more sensitive to heat. Activity level looks at how physical effort the user is putting in while exposed to heat. Hydration status shows whether the user is drinking water.
+By combining these factors IniTify’s heat-risk assessment does not depend on the environment. It also considers the person using the system. The research paper says that these individual factors are used with environmental data to create a personalized heat-risk classification.
+In summary IniTify uses one factor and four individual factors, for heat-risk assessment. These are heat index, age, health condition, activity level and hydration status. These form the foundation of the system’s process. They help the system deliver heat-risk information based on both the environment and the user’s personal traits.
+Table 2.1 AI-Based Personalized Heat-Risk Assessment Using a Decision Tree Model
+Case
+Heat Index (°C)
+Age
+Health Condition
+Hydration
+Activity Level
+Expected Result
+Actual Result
+Status
+1
+25
+25
+None
+Well hydrated
+Low
+Low
+Low
+Pass
+2
+25
+65
+None
+Well hydrated
+Low
+Moderate
+Moderate
+Pass
+3
+26
+18
+None
+Well hydrated
+Low
+Moderate
+Moderate
+Pass
+4
+27
+25
+None
+Well hydrated
+Low
+Moderate
+Moderate
+Pass
+5
+28
+25
+Hypertension
+Well hydrated
+Low
+High
+High
+Pass
+6
+29
+25
+None
+Dehydrated
+Low
+High
+High
+Pass
+7
+30
+25
+Diabetes
+Dehydrated
+High
+Extreme
+Extreme
+Pass
+8
+31
+70
+Heart Disease
+Moderately hydrated
+Moderate
+Extreme
+Extreme
+Pass
+9
+32
+25
+None
+Well hydrated
+High
+High
+Extreme
+Fail
+10
+33
+25
+None
+Well hydrated
+Low
+Low
+High
+Fail
+11
+34
+25
+Asthma
+Well hydrated
+Moderate
+High
+Extreme
+Fail
+12
+35
+25
+None
+Dehydrated
+Low
+Extreme
+Extreme
+Pass
+13
+36
+55
+None
+Well hydrated
+High
+High
+High
+Pass
+14
+37
+25
+Diabetes
+Moderately hydrated
+High
+Extreme
+Extreme
+Pass
+15
+38
+25
+Heart Disease
+Well hydrated
+Low
+High
+Extreme
+Fail
+16
+38
+62
+Heart Disease
+Dehydrated
+High
+Extreme
+Extreme
+Pass
+17
+39
+18
+None
+Moderately hydrated
+High
+Extreme
+Extreme
+Pass
+18
+40
+25
+Hypertension
+Well hydrated
+Low
+High
+High
+Pass
+19
+40.7
+25
+Hypertension
+Well hydrated
+Low
+High
+High
+Pass
+20
+41
+25
+None
+Well hydrated
+Low
+Moderate
+Moderate
+Pass
+21
+41
+25
+None
+Dehydrated
+Low
+Extreme
+Extreme
+Pass
+22
+24
+25
+None
+Dehydrated
+High
+High
+High
+Pass
+23
+29
+25
+Hypertension
+Well hydrated
+Low
+High
+High
+Pass
+24
+33
+25
+Diabetes, Asthma
+Dehydrated
+High
+Extreme
+Extreme
+Pass
+25
+41
+65
+Diabetes
+Dehydrated
+High
+Extreme
+Extreme
+Pass
+Total
+24-41
+-
+-
+-
+-
+21 Passed
+84%
+4 Failed
+16%
+Table 2.1 shows the validation results of the Decision Tree AI model that's part of the IniTify mobile application. This model is designed to give heat-risk assessments. Twenty-five test cases were used to check how well the model works. These test cases used combinations of heat index, age, health condition, hydration status and activity level. These combinations represent the kinds of situations a user might face when exposed to heat. The validation compared what the result should have been—this is the expected classification—with what the Decision Tree model produced.
+The results show that 21 out of the 25 test cases were classified correctly. Four cases did not match the expected classification. This gives a validation success rate of 84 percent and a failure rate of 16 percent. The 21 correct classifications show that the Decision Tree model was able to produce the heat-risk level in most of the scenarios tested.
+The validation cases covered a range of conditions. The heat index values tested ranged from 24°C to 41°C. Ages tested ranged from 8 to 70 years old. Some test cases included people with health conditions like hypertension, diabetes, asthma or heart disease. Others had no health conditions. Hydration was tested as hydrated moderately hydrated or dehydrated. Activity levels were categorized as Low, Moderate or High.
+In the cases the expected result and the actual result were the same. For example Case 7 had a heat index of 30°C, diabetes, dehydration and high activity. Both the expected and actual classification were Extreme. Similarly Cases 12 14 16 17 21 24 and 25 also produced Extreme classifications when the conditions matched. These outcomes show that the model can correctly identify high-risk situations based on the input data.
+Four cases did not match the expected results. In Case 9 the expected classification was High. The model gave Extreme. In Case 10 the expected result was Low. The model output was High. Case 11 was expected to be High. The model said Extreme. Case 15 was expected to be High. The model again classified it as Extreme.
+An important point is that in all four cases where the model failed it gave a risk classification than expected. This means the model did not underestimate risk. It overestimated it instead. While this shows a problem the table alone does not explain why these errors happened. So we cannot say which factor caused the mistakes unless further analysis is done on the model.
+The 84 percent success rate shows that the Decision Tree worked well across the test cases.. It did not produce the expected result in every case. The four failures are important because they point out situations where the model behaves differently than intended. These cases can be used to review and improve the decision rules. This improvement is especially needed before the model is used in real-world settings.
+It is also important to understand that the 84 percent result only applies to these 25 test cases. It should not be called real-world accuracy. The test data is made up of predefined cases, not real-world data collected from actual users. The result shows how the model performed against the expected outputs in the test cases.
+Overall the Decision Tree model correctly classified the heat-risk level in 21 out of 25 cases. This gives an 84 percent validation success rate. The results support using the Decision Tree as the AI-based personalized heat-risk assessment feature, in IniTify. At the time the four cases that failed show that the model needs more review and refinement to improve consistency.
+Table 2.2. Functional and Performance Testing Results of Weather Monitoring, Heat-Index, Alert, Safety-Prompt, and Recommendation Features
+Test ID
+Feature / Function
+Functional Result
+Wi-Fi Mean (s)
+Mobile Data Mean (s)
+Offline Mean (s)
+FT-03
+Weather Retrieval
+5/5 Pass (100%)
+2.52
+2.49
+0.77
+FT-04
+Heat-Index Display
+5/5 Pass (100%)
+2.52*
+2.49*
+0.77*
+FT-06
+Safety Recommendation
+5/5 Pass (100%)
+0.86
+0.83
+0.73
+FT-07
+ Safety Prompt Trigger
+5/5 Pass (100%)
+5.75*
+5.78*
+5.87*
+FT-08
+Safety Prompt Response
+5/5 Pass(100%)
+—
+—
+—
+FT-10
+Notification / Heat Alert
+5/5 Pass (100%)
+5.75*
+5.78*
+5.87*
+Overall
+6 Functional Tests
+30/30 Pass (100%)
+—
+—
+—
+The functional testing results show that the weather monitoring, heat-index display, safety recommendation, safety prompt, prompt response and notification features all worked correctly during the evaluation. The six functional tests—FT-03 FT-04 FT-06 FT-07, FT-08 and FT-10—each ran five trials. Every trial was recorded as a Pass. This means 30 out of 30 executions were successful. These outcomes confirm that the tested features consistently performed their intended functions during black-box testing.
+For the weather and heat-index functions both FT-03 and FT-04 had five trials. Performance testing showed a response time of 2.52 seconds when using Wi-Fi and 2.49 seconds with mobile data for retrieving weather and heat-index information. The difference of 0.03 seconds between the two network types suggests that the retrieval speed stayed quite stable under the conditions tested. These results support the application’s ability to get and display the data needed for tracking heat-related risks.
+The personalized recommendation feature also passed all tests with FT-06 recording five trials. Its average response time was 0.86 second over Wi-Fi 0.83 second over data and 0.73 second when offline. These short response times indicate that the system could quickly show recommendations once the assessment process finished.
+For the safety- notification features, FT-07, FT-08 and FT-10 also achieved full success across all five trials. Performance testing measured the operation of triggering notifications and safety prompts at 5.75 seconds over Wi-Fi 5.78 seconds over mobile data and 5.87 seconds in offline mode. The small differences between these values suggest performance behavior under different network conditions. Since the test sheet treats notification and safety-prompt triggering as one process these numbers reflect the combined response time rather than separate values for each feature.
+The results further show that the applications safety outputs went beyond simply showing weather data. The functional tests included activating safety prompts capturing user responses to those prompts and processing notifications. This allowed the entire monitoring and safety-support sequence to be observed. The consistent success across all trials means the tested functions behaved exactly as expected.
+It is important to make a distinction between passing functional tests and performance metrics. A 100% functional pass means every trial met the required behavior. It does not mean that every feature had its individual response time measurement. In performance testing, weather and heat-index retrieval, well as notification and safety-prompt triggering were measured as combined operations. So the average times should not be seen as measurements for each feature.
+Regarding RQ2.2 the findings show that the weather monitoring, heat-index, alert, safety-prompt and personalized recommendation features all successfully completed their tests. The performance data provides evidence about how fast they responded under the tested conditions. These results support using these features as components for monitoring and safety support, in the IniTify mobile application.
+Table 2.3.1. Functional Testing Results of User-Support, Emergency, Navigation, and Offline Features
+Test ID
+Feature / Function
+Trial 1
+Trial 2
+Trial 3
+Trial 4
+Trial 5
+Result
+FT-01
+Authentication
+Pass
+Pass
+Pass
+Pass
+Pass
+5/5 Pass
+FT-02
+User Profile
+Pass
+Pass
+Pass
+Pass
+Pass
+5/5 Pass
+FT-09
+Tify Check-in
+Pass
+Pass
+Pass
+Pass
+Pass
+5/5 Pass
+FT-11
+Emergency Escalation
+Pass
+Pass
+Pass
+Pass
+Pass
+5/5 Pass
+FT-12
+Emergency Contact
+Pass
+Pass
+Pass
+Pass
+Pass
+5/5 Pass
+FT-13
+GPS
+Pass
+Pass
+Pass
+Pass
+Pass
+5/5 Pass
+FT-14
+Hospital Navigation
+Pass
+Pass
+Pass
+Pass
+Pass
+5/5 Pass
+FT-15
+First-Aid Guidance
+Pass
+Pass
+Pass
+Pass
+Pass
+5/5 Pass
+FT-16
+Offline Information
+Pass
+Pass
+Pass
+Pass
+Pass
+5/5 Pass
+FT-17
+Network Failure
+Pass
+Pass
+Pass
+Pass
+Pass
+5/5 Pass
+Total
+10 functions
+10
+10
+10
+10
+10
+50/50 Pass (100%)
+The functional testing results show that the user-support, emergency, navigation and offline features of the IniTify application worked as expected during the trials. Ten key functions were tested—authentication, user profile management, Tify check-in, emergency escalation, emergency contact handling, GPS, hospital navigation, first-aid guidance, offline information and network failure handling. Each function was tested five times. All 50 trials ended successfully. That means a 100% pass rate across all tests.
+Authentication and user profile management worked perfectly showing the app could handle user access and profile updates without issues. The Tify check-in function also passed all tests, which means the system’s health and heat monitoring process worked correctly. Emergency functions like emergency escalation and handling emergency contacts also performed well. This confirms the system can follow the required steps to communicate and escalate emergencies when needed.
+The GPS, hospital navigation and first-aid guidance features all completed their tests successfully. This shows that the location-based support and safety information features were active and reliable, during testing. The information and network failure tests also succeeded. This means the app could still provide information even when there was no network connection. It handled these situations well. Kept users safe.
+Overall the results prove that the user-support, emergency, navigation and offline components of the IniTify application worked properly under the test conditions. The tests confirmed that these features functioned as intended during the trials. However the results only cover the conditions used. They do not guarantee the system will work the way in every real-world situation. The system might behave differently with network conditions, user behaviors or environmental factors.
+Table 2.3.2A. Reliability Testing Results Under Failure Conditions
+Failure Condition
+Trials
+Successful Handling
+Status
+Network disconnection/reconnection during weather retrieval
+5
+5
+Pass
+GPS permission disabled/unavailable
+5
+5
+Pass
+Notification permission disabled
+5
+5
+Pass
+Offline cached critical information
+5
+5
+Pass
+Total
+20
+20
+100% Pass
+The reliability testing looked at how the application acted under failure and connectivity situations. Four situations were tested, which were network disconnection and reconnection while getting weather information, no or disabled GPS permission, no or disabled notification permission and being able to use cached information when there was no internet. Each situation was tested five times. There were 20 successful tests out of 20 which means a 100% success rate for the situations that were tested.
+The tests that involved disconnecting and reconnecting the network were successful which means the application could deal with the interruption in connection without stopping the main system function from finishing. The same goes for the GPS permission situation, which was handled well during the tests showing that the application reacted correctly when location access was not available. The test for notification permission also worked, which shows that the application could work when notification permission was not given.
+Testing when there was no internet connection also showed that the cached important information was still available. This is very important for IniTify because users might need to have access to safety-related information even when the internet is not working.
+A note was made during the testing about repeated notifications appearing often. Even though the tests for failure conditions went well this note shows an area that might need work on how the application handles notifications. So the results, from the reliability tests show that the application handled the failure conditions well. There is one specific thing that could be improved for the future.
+Table 2.3.2B. Task-Based Usability Testing Results
+Task
+Completion Time (s)
+Errors
+Completion
+Task 1
+12.20
+None
+Completed
+Task 2
+4.00
+None
+Completed
+Task 3
+10.00
+None
+Completed
+Task 4
+7.00
+None
+Completed
+Task 5
+10.05
+None
+Completed
+Task 6
+2.44
+None
+Completed
+Task 7
+2.00
+None
+Completed
+Task 8
+0.74
+None
+Completed
+Average
+6.43
+No recorded errors
+All completed
+The task-based testing assessed whether the researchers could complete eight defined application tasks and whether errors occurred during task execution. All eight tasks were completed, and no errors were recorded. Completion times ranged from 0.74 seconds to 12.20 seconds, with an average completion time of 6.43 seconds. These results indicate that the tested application workflows could be executed successfully under the conditions used during the evaluation.
+The variation in completion time reflects differences in the amount of interaction required by the individual tasks. Task 8 recorded the shortest completion time at 0.74 seconds, while Task 1 recorded the longest at 12.20 seconds. Despite these differences, every task was completed without a recorded error. This provides evidence that the researchers were able to execute the defined workflows during testing.
+However, the findings should be interpreted as initial task-based usability evidence rather than a general usability assessment of the application. Since the tasks were performed by the researchers and not by independent members of the intended user population, the results do not establish how easily or satisfactorily typical users would interact with the system. Further evaluation involving independent end users would be necessary to obtain broader evidence of usability.
+Table 2.3.3. Emergency Alert and Escalation Testing Results
+Scenario
+Condition Tested
+Expected Result
+Status
+Normal/Low Risk
+Low-risk condition
+No emergency escalation is activated
+PASS
+High-Risk Alert
+High-risk condition detected
+High-risk warning/safety prompt is displayed
+PASS
+Alert Acknowledgment
+User receives and responds to safety prompt
+User response is processed and recorded
+PASS
+No Response
+User does not respond to the safety prompt
+Configured escalation process proceeds according to system conditions
+PASS
+Emergency Condition
+Multiple emergency indicators are present
+Emergency assistance workflow is activated
+PASS
+Emergency Contact
+Emergency escalation with a valid emergency contact
+Emergency contact workflow is executed
+PASS
+Table 2.3.3 observed that the emergency alert and escalation testing looked at how the application behaved in a variety of emergency‑related situations. These situations included low‑risk conditions, high‑risk alerts, alert acknowledgment, no response, emergency conditions and emergency contact handling. The recorded results show that the emergency workflows were carried out successfully during the tests.
+When the emergency system ran under low‑risk conditions we checked to make sure that emergency escalation would not turn on unnecessarily. In the high‑risk scenario the emergency system was tested to see if the emergency alert could be sent when a higher level of heat risk was found. The acknowledgment scenario checked how the emergency system reacted when the user touched the emergency alert and the no‑response scenario looked at whether the emergency workflow kept going when the user ignored the emergency alert.
+The emergency condition and emergency contact scenarios tested how the emergency system moved from detecting risk to providing emergency help. The good results, in these tests show that the emergency escalation process, including the emergency contact part worked as planned.
+These findings confirm that IniTifys emergency assistance system works in the emergency scenarios that the researchers tested.. The results only show that the emergency system completed the set emergency scenarios, not that it can spot or react correctly to every possible real‑world emergency situation.
+Table 3.1. Structure of the Developed Decision Tree AI Model
+Model Element
+Variable / Category
+Function in the Model
+Environmental Input
+Heat Index
+Represents the environmental heat condition experienced by the user
+Individual Input
+Age
+Represents an age-related factor considered in heat-risk classification
+Individual Input
+Health Condition
+Represents documented health conditions considered in assessing heat vulnerability
+Individual Input
+Hydration Status
+Represents the user's hydration condition
+Individual Input
+Activity Level
+Represents the user's level of physical activity during heat exposure
+Classification Algorithm
+Decision Tree
+Processes the environmental and individual inputs through decision conditions
+Output Class
+Low
+Represents the lowest defined heat-risk level
+Output Class
+Moderate
+Represents a moderate heat-risk level
+Output Class
+High
+Represents a high heat-risk level
+Output Class
+Extreme
+Represents the highest defined heat-risk level
+The Decision Tree AI model that we built is structured around five input variables that show both personal conditions. Heat Index is the input. Age, health condition, hydration status and activity level are the factors. These five variables give the information that the Decision Tree AI model uses to classify heat risk.
+The Decision Tree AI model outputs four heat‑risk levels: Moderate, High and Extreme. This way the IniTify application can look at both the heat conditions in the environment and the personal circumstances when it makes a heat‑risk classification. The classification that the Decision Tree AI model produces is then the foundation, for the app’s suggestions, safety tips and heat‑risk alerts.
+The table shows the structure of the Decision Tree AI model that we built with its input variables the algorithm used for classification and the output classes. The table does not give the thresholds or branch rules for each decision node because those rules were not recorded separately in the testing data we had. Thus, the table displays the Decision Tree AI model at the level that our system and its validation results support.
+Table 3.2. Heat-Risk Output Classes of the Developed Decision Tree Model
+Risk Classification
+Meaning in IniTify
+Low
+Lowest heat-risk category generated by the Decision Tree
+Moderate
+Indicates an increased heat-risk condition requiring greater precaution
+High
+Indicates a high heat-risk condition requiring stronger preventive action
+Extreme
+Highest heat-risk category indicating a severe heat-risk condition
+The Decision Tree AI model that we built is structured around five input variables that show both personal conditions. Heat Index is the input. Age, health condition, hydration status and activity level are the factors. These five variables give the information that the Decision Tree AI model uses to classify heat risk.
+The Decision Tree AI model outputs four heat‑risk levels: Moderate, High and Extreme. This way the IniTify application can look at both the heat conditions in the environment and the personal circumstances when it makes a heat‑risk classification. The classification that the Decision Tree AI model produces is then the foundation, for the app’s suggestions, safety tips and heat‑risk alerts.
+The table shows the structure of the Decision Tree AI model that we built with its input variables the algorithm used for classification and the output classes. The table does not give the thresholds or branch rules for each decision node because those rules were not recorded separately in the testing data we had. Hence, the table displays the Decision Tree AI model at the level that our system and its validation results support.
+V.
+SUMMARY, CONCLUSIONS, AND RECOMMENDATIONS
+A. Summary of Findings
+The study developed IniTify, an AI-based heat-risk monitoring and personalized alert system. IniTify combines environmental heat data with health and lifestyle factors to deliver heat-risk assessments, safety advice, alerts and emergency support. The researchers tested the system using predefined test cases and controlled scenarios than real users. The evaluation covered key areas: Decision Tree validation, functional testing, performance measurement, reliability testing, task-based usability testing and emergency alert and escalation testing.
+The results are presented according to the research questions of the study.
+1. Environmental and Individual Factors Integrated into the System
+The system integrates five factors into its heat-risk assessment. The environmental factor is the heat index. The individual factors include age, health condition, activity level and hydration status. These inputs allow the system to create a risk profile by considering both the surrounding heat conditions and the users personal characteristics.
+2. Performance of the Heat-Risk Assessment, Monitoring, Alert and Safety-Support Features
+2.1 Decision Tree AI Model
+The Decision Tree AI model was tested using 25 predefined cases, each with combinations of heat index, age, health condition, hydration status and activity level. The model correctly classified the heat risk in 21 out of 25 cases achieving an 84% success rate. Four cases or 16% did not match the expected risk level. The heat index values tested ranged from 24°C to 41°C. Ages in the test cases ranged from 18 to 70 years old.
+The results show that the Decision Tree model performed well in cases. However the four incorrect classifications highlight the need for refinement before the model can be confidently applied to broader situations.
+2.2 Weather Monitoring, Heat-Index, Alert, Safety-Prompt and Recommendation Features
+All six functional features—weather retrieval, heat-index display, safety recommendations, safety-prompt triggering, safety-prompt response and notifications—were tested. Each feature completed five trials with all 30 trials passing. This gives a 100% pass rate.
+Performance testing measured response times under network conditions. Weather and heat-index retrieval had times of 2.52 seconds via Wi-Fi, 2.49 seconds via mobile data and 0.77 seconds offline. Personalized recommendation display took 0.86 seconds, 0.83 seconds and 0.73 seconds across the same conditions. The notification and safety-prompt triggering operation took an average of 5.75 seconds via Wi-Fi, 5.78 seconds via mobile data and 5.87 seconds offline. The paper notes that some of these measurements involve operations and should not be read as individual feature performance.
+2.3 User-Support, Emergency, Navigation and Offline Features
+Functional testing included authentication, user profiles, Tify check-in, emergency escalation, emergency contacts, GPS, hospital navigation, first-aid guidance, offline information and network failure handling. All 50 tests passed, resulting in a 100% success rate. This shows that the system behaved as expected during the evaluation.
+Reliability testing looked at four failure scenarios: network disconnection and reconnection unavailable GPS permission, disabled notification permission and access to data while offline. Each scenario was tested five times with all 20 trials handled successfully resulting in a 100% success rate. However, the researchers noticed that notifications were sometimes duplicated. This issue was noted as needing attention.
+For task-based usability testing all eight tasks were completed without errors. Task completion times varied from 0.74 seconds to 12.20 seconds with an average of 6.43 seconds. These results suggest that the tested workflows could be completed successfully by the researchers. Still because the testing was done by the research team these results should not be taken as a measure of usability for the general target population.
+Emergency alert and escalation testing also passed all scenarios. These included low-risk conditions, high-risk alerts, alert acknowledgment, nonresponse, emergency situations and handling of emergency contacts. The results confirm that the emergency workflow functioned as intended.
+3. Developed Decision Tree AI Model
+The decision tree model used in IniTify has five input variables: heat index, age, health condition, hydration status and activity level. The heat index is the input. The other four are factors. These inputs are processed by the decision tree algorithm to produce one of four heat-risk classifications: Moderate, High or Extreme.
+These four classes represent an increase, in risk. Low means the risk category. Moderate means the risk is rising and more caution is needed. High means the risk is significant and stronger preventive actions are required. Extreme means the risk category indicating a critical situation. These classifications are used to guide the system’s safety recommendations, alerts and emergency responses.
+B. Conclusion
+Based on the findings of the study the following conclusions were drawn:
+• The developed IniTify system combined environmental and individual factors to assess heat risk on a personalized basis. The heat index was used as the factor while age, health condition, activity level and hydration status were included as individual factors. This approach allows the system to consider both the heat conditions and the personal situation of the user.
+• The Decision Tree AI model performed well in most of the validation cases. Out of 25 cases it correctly classified 21 achieving an 84% success rate. This shows that the model can be reliable as the AI component of the system within the scope of the test data. However, the four incorrect classifications show that further refinement and broader testing are needed before the model can be trusted in real-world settings.
+• The core functions of the system—monitoring, heat index tracking, alerts, safety prompts and recommendations—worked as expected during testing. All 30 executions of the six functions were successful. Performance data also showed how the application responded under network conditions: Wi-Fi, mobile data and offline.
+• The user-support, emergency, navigation and offline features also worked correctly. Functions such as authentication, profile management, Tify check-in, emergency assistance, handling of emergency contacts, GPS, hospital navigation, first-aid guidance, access to information and handling network failures all passed all five test trials.
+• The system handled the failure conditions and emergency scenarios tested by the researchers properly. All 20 reliability tests were successful. The emergency workflows followed their intended paths. However, notification duplication was observed in some cases. This technical issue should be fixed in updates to improve system reliability.
+• The task-based usability test showed that the application workflows could be completed. All eight tasks were finished without errors. The average time to complete each task was 6.43 seconds. Since the test was done by researchers and not actual end users the results offer insights into usability rather than a full evaluation of how real users would interact with the system.
+• The Decision Tree model created a four-level heat-risk classification system. It takes five inputs. Outputs one of four risk levels: Low Moderate, High or Extreme. These risk levels then connect directly to the app’s alerts, recommendations and safety support features.
+• The study shows that it is technically possible to combine AI-based heat-risk assessment with monitoring, personalized advice, alerts, emergency help and offline support in a mobile app. However, the results should be viewed within the limits of the study. The research does not prove effectiveness, real-world accuracy or performance in every possible environment. The paper acknowledges limitations, including reliance on heat-index data, user-input information, location permissions, internet access for some features and testing only, in Tuguegarao City during the study period.
+C. Recommendation
+Based on the findings and limitations of the study the following recommendations are proposed:
+1. Refine the Decision Tree AI model. The four validation cases that did not match their expected classifications should be reviewed to determine which decision conditions contributed to the mismatches. Additional validation cases should also be created to cover a range of heat-index values and combinations of age, health condition, hydration status and activity level.
+2. Conduct AI model validation. Future researchers should evaluate the Decision Tree using a more diverse validation dataset. Where appropriate the model may also be compared with classification approaches to determine whether its performance can be improved.
+3. Resolve the notification duplication issue. The observed frequent duplication of notifications should be. Corrected to prevent unnecessary repeated alerts and improve the reliability of the notification mechanism.
+4. Conduct user testing. Future evaluation should include members of the intended user population rather than relying only on researcher-conducted task testing. This would provide evidence regarding usability; clarity of instructions eases of navigation and user experience.
+5. Expand performance testing. Additional performance tests should be conducted using mobile devices, operating conditions, network speeds and connectivity conditions. Longer-duration testing may also help determine whether performance remains consistent during use.
+6. Conduct field testing in environmental conditions. Since the current study is limited to the development and testing of the application within Tuguegarao City future researchers should evaluate the system in locations and under different heat and environmental conditions to determine whether the results remain consistent.
+7. Improve emergency-assistance validation. Future studies should conduct extensive emergency simulations involving different combinations of risk levels user responses, location conditions, connectivity states and emergency-contact configurations. This would provide evidence for the reliability of the emergency escalation workflow.
+8. Improve capabilities. Since some real-time features require an internet connection, future version should continue improving cached information and offline access to essential safety guidance while clearly communicating which features require connectivity.
+9. Strengthen GPS and hospital information testing. Future versions should test location accuracy and hospital information across locations and connectivity conditions to ensure that emergency navigation remains useful during actual heat-related situations.
+10. Maintain the system as a decision-support and early-warning tool. The application should not be presented as a diagnostic or treatment device. Future development should retain limitations and safety messaging because the system depends on environmental data, user-provided information, device permissions and network availability.
+11. Standardize the applications name throughout the manuscript. The final paper uses IniTify in the title and several sections. Uses IniTify in some research questions and Results and Discussion sections. Before submission or defense the researchers should choose the application name and use it consistently throughout the title, research questions, tables, figures, discussion and conclusions. This is a format and consistency issue, not a change, to the research findings.
+REFERENCES
+Breiman, L., Friedman, J. H., Olshen, R. A., & Stone, C. J. (1984). Classification and Regression Trees. Wadsworth International Group.
+Boeckmann, M., & Rohn, I. (2021). Is planned adaptation to heat reducing heat-related mortality and illness? A systematic review. BMC Public Health, 21(1), 1–15.
+Boulos, M. N. K., Resch, B., Crowley, D. N., Breslin, J. G., Sohn, G., Burtner, R., Pike, W. A., Jezierski, E., & Chuang, K. Y. S. (2011).
+Crowdsourcing, citizen sensing and sensor web technologies for public and environmental health surveillance and crisis management. International Journal of Health Geographics, 10(67).
+Department of Science and Technology–Philippine Atmospheric, Geophysical and Astronomical Services Administration. (2024). Heat Index Monitoring (iHeatMap). https://bagong.pagasa.dost.gov.ph
+Ebi, K. L., Capon, A., Berry, P., Broderick, C., de Dear, R., Havenith, G., Honda, Y., Kovats, R. S., Ma, W., Malik, A., & others. (2021). Hot weather and heat extremes: Health risks. The Lancet.
+Google. (n.d.). Google Maps Platform Documentation. https://developers.google.com/maps
+Hussain, I. Z., Oetomo, A., Kaur, J., & Morita, P. P. (2024). Artificial intelligence–integrated Internet of Things for heat monitoring and prediction. Frontiers in Digital Health.
+Kacker, K., Srivastava, P., & Mukherjee, M. (2025). Personalized heat stress forecasting using environmental hazards, vulnerability indicators, and exposure levels. Environmental Modelling & Software.
+Laudon, K. C., & Laudon, J. P. (2022). Management Information Systems: Managing the Digital Firm (17th ed.). Pearson.
+Marcolino, M. S., Oliveira, J. A. Q., D’Agostino, M., Ribeiro, A. L., Alkmim, M. B. M., & Novillo-Ortiz, D. (2018). The impact of mHealth interventions: Systematic review. JMIR mHealth and uHealth, 6(1), e23.
+Martínez-Pérez, B., de la Torre-Díez, I., & López-Coronado, M. (2015). Mobile health applications for the most prevalent conditions by the World Health Organization: Review and analysis. Journal of Medical Systems, 39(1).
+Oberai, M., Xu, Z., Bach, A. J. E., et al. (2025). Development of an individualized digital heat warning system for older adults. npj Digital Medicine.
+Olla, P., & Shimskey, C. (2015). mHealth taxonomy: A literature survey of mobile health applications. Health and Technology, 5(4), 299–308.
+Quinlan, J. R. (1986). Induction of decision trees. Machine Learning, 1(1), 81–106.
+Ramesh, A., Kumar, S., & Patel, R. (2023). GPS-enabled mobile applications for emergency healthcare response: A review. Healthcare Informatics Research.
+Sidey-Gibbons, J. A. M., & Sidey-Gibbons, C. J. (2019). Machine learning in medicine: A practical introduction. BMC Medical Research Methodology, 19(64).
+Tohka, J., & van Gils, M. (2021). Evaluation of machine learning algorithms in healthcare. Journal of Healthcare Engineering.
+Wang, Y., Chen, R., et al. (2023). Mobile health technologies and adherence to preventive health practices: A systematic review. Journal of Medical Internet Research.
+World Health Organization. (2019). WHO guideline: Recommendations on digital interventions for health system strengthening. https://www.who.int
+World Health Organization. (2021). Global strategy on digital health 2020–2025. https://www.who.int
+World Health Organization. (2024). Heat and health. https://www.who.int
+World Health Organization. (2026). Heat and health guidance. https://www.who.int
+World Health Organization Regional Office for Europe. (2026). Heat–Health Action Plans. Copenhagen: WHO Regional Office for Europe.
+World Health Organization, & World Meteorological Organization. (2015). Heatwaves and Health: Guidance on Warning-System Development.
+World Health Organization, & World Meteorological Organization. (2016). Heatwaves and Health: Guidance on Warning-System Development.

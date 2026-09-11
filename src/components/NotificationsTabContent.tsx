@@ -7,11 +7,12 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { InAppNotification, InAppNotificationType } from '@/src/models/in-app-notification';
-import { PageMasthead, ScreenTopAccent } from '@/src/components/layout/PageMasthead';
+import { ScreenTopAccent } from '@/src/components/layout/PageMasthead';
 import {
   notificationService,
   type NotificationPermissionStatus,
@@ -23,13 +24,13 @@ import type { AppPalette } from '@/src/theme/palettes';
 
 const TYPE_META: Record<
   InAppNotificationType,
-  { icon: React.ComponentProps<typeof Ionicons>['name']; color: string }
+  { icon: React.ComponentProps<typeof Ionicons>['name']; color: string; label: string }
 > = {
-  'check-in-reminder': { icon: 'alarm-outline', color: '#2563EB' },
-  'heat-risk': { icon: 'thermometer-outline', color: '#1D4ED8' },
-  'weather-safety': { icon: 'partly-sunny-outline', color: '#3B82F6' },
-  emergency: { icon: 'warning-outline', color: '#1E3A8A' },
-  system: { icon: 'information-circle-outline', color: '#64748B' },
+  'check-in-reminder': { icon: 'alarm-outline', color: '#2563EB', label: 'Check-in' },
+  'heat-risk': { icon: 'thermometer-outline', color: '#DC2626', label: 'Heat risk' },
+  'weather-safety': { icon: 'partly-sunny-outline', color: '#D97706', label: 'Weather' },
+  emergency: { icon: 'warning-outline', color: '#991B1B', label: 'Emergency' },
+  system: { icon: 'information-circle-outline', color: '#64748B', label: 'System' },
 };
 
 interface NotificationsTabContentProps {
@@ -49,7 +50,6 @@ export function NotificationsTabContent({
   const insets = useSafeAreaInsets();
   const { palette, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(palette, isDark), [palette, isDark]);
-  const shadow = useMemo(() => cardShadow(), []);
 
   const [permission, setPermission] = useState<NotificationPermissionStatus>('undetermined');
   const [busy, setBusy] = useState(false);
@@ -72,7 +72,6 @@ export function NotificationsTabContent({
       setPermission(await notificationService.getPermissionStatus());
       setPhoneMessage(result.message);
       if (!result.data && result.status === 'permission_denied') {
-        // If Android won't show the prompt again, send user to Settings.
         const status = await notificationService.getPermissionStatus();
         if (status === 'denied') {
           await notificationService.openSystemNotificationSettings();
@@ -113,134 +112,191 @@ export function NotificationsTabContent({
         <ScreenTopAccent />
 
         <SafeAreaView edges={['top']} style={{ paddingHorizontal: horizontalPadding }}>
-          <PageMasthead
-            overline="IniTify"
-            title="Notifications"
-            subtitle="Heat, check-in, and emergency alerts — also sent to your phone."
-          />
-
-          <View style={[styles.phoneCard, shadow]}>
-            <View style={styles.phoneHead}>
-              <View style={styles.phoneIcon}>
-                <Ionicons
-                  name={phoneEnabled ? 'notifications' : 'notifications-off-outline'}
-                  size={22}
-                  color={palette.primary}
-                />
-              </View>
-              <View style={styles.phoneTextWrap}>
-                <Text style={styles.phoneTitle}>
-                  {phoneEnabled ? 'Phone notifications on' : 'Enable phone notifications'}
-                </Text>
-                <Text style={styles.phoneBody}>
-                  {!nativeAvailable
-                    ? 'Install the release APK to use the phone notification shade.'
-                    : phoneEnabled
-                      ? 'Heat alerts and reminders will appear in your notification shade.'
-                      : 'Tap Allow when Android asks, or open Settings if the prompt does not show.'}
+          <View style={styles.pageHeader}>
+            <View style={styles.pageHeaderRow}>
+              <View style={styles.pageHeaderText}>
+                <Text style={styles.pageTitle}>Notifications</Text>
+                <Text style={styles.pageSubtitle}>
+                  Heat alerts, check-ins, and safety updates
                 </Text>
               </View>
+              {unread > 0 ? (
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadBadgeText}>{unread}</Text>
+                </View>
+              ) : null}
             </View>
-
-            {nativeAvailable ? (
-              <View style={styles.phoneActions}>
-                {!phoneEnabled ? (
-                  <Pressable
-                    onPress={() => void enablePhoneNotifications()}
-                    disabled={busy}
-                    style={({ pressed }) => [
-                      styles.phonePrimaryBtn,
-                      pressed && styles.pressed,
-                      busy && styles.disabled,
-                    ]}
-                  >
-                    {busy ? (
-                      <ActivityIndicator color="#FFF" />
-                    ) : (
-                      <>
-                        <Ionicons name="shield-checkmark-outline" size={16} color="#FFF" />
-                        <Text style={styles.phonePrimaryText}>Allow notifications</Text>
-                      </>
-                    )}
-                  </Pressable>
-                ) : (
-                  <Pressable
-                    onPress={() => void sendTest()}
-                    disabled={busy}
-                    style={({ pressed }) => [
-                      styles.phonePrimaryBtn,
-                      pressed && styles.pressed,
-                      busy && styles.disabled,
-                    ]}
-                  >
-                    {busy ? (
-                      <ActivityIndicator color="#FFF" />
-                    ) : (
-                      <>
-                        <Ionicons name="flash-outline" size={16} color="#FFF" />
-                        <Text style={styles.phonePrimaryText}>Send test notification</Text>
-                      </>
-                    )}
-                  </Pressable>
-                )}
-                <Pressable
-                  onPress={() => void notificationService.openSystemNotificationSettings()}
-                  style={({ pressed }) => [styles.phoneGhostBtn, pressed && styles.pressed]}
-                >
-                  <Text style={styles.phoneGhostText}>Open phone Settings</Text>
-                </Pressable>
-              </View>
-            ) : null}
-
-            {phoneMessage ? <Text style={styles.phoneMessage}>{phoneMessage}</Text> : null}
           </View>
 
-          {unread > 0 ? (
-            <Pressable
-              onPress={onMarkAllRead}
-              style={({ pressed }) => [styles.markAllBtn, pressed && styles.pressed]}
-            >
-              <Text style={styles.markAllText}>Mark all as read</Text>
-            </Pressable>
-          ) : null}
+          <View style={styles.phoneCard}>
+            <LinearGradient
+              colors={
+                phoneEnabled
+                  ? isDark
+                    ? ['#1E3A8A', '#2563EB']
+                    : ['#2563EB', '#3B82F6']
+                  : isDark
+                    ? [palette.surface, palette.surfaceMuted]
+                    : [palette.surface, palette.primarySoft]
+              }
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.phoneCardInner}>
+              <View style={styles.phoneHead}>
+                <View
+                  style={[
+                    styles.phoneIcon,
+                    phoneEnabled && styles.phoneIconOn,
+                  ]}
+                >
+                  <Ionicons
+                    name={phoneEnabled ? 'notifications' : 'notifications-off-outline'}
+                    size={22}
+                    color={phoneEnabled ? '#FFFFFF' : palette.primary}
+                  />
+                </View>
+                <View style={styles.phoneTextWrap}>
+                  <Text style={[styles.phoneTitle, phoneEnabled && styles.phoneTitleOn]}>
+                    {phoneEnabled ? 'Phone alerts on' : 'Turn on phone alerts'}
+                  </Text>
+                  <Text style={[styles.phoneBody, phoneEnabled && styles.phoneBodyOn]}>
+                    {!nativeAvailable
+                      ? 'Install the release APK to use the phone notification shade.'
+                      : phoneEnabled
+                        ? 'Heat and check-in reminders appear in your notification shade.'
+                        : 'Allow notifications so IniTify can warn you about heat risk.'}
+                  </Text>
+                </View>
+              </View>
+
+              {nativeAvailable ? (
+                <View style={styles.phoneActions}>
+                  {!phoneEnabled ? (
+                    <Pressable
+                      onPress={() => void enablePhoneNotifications()}
+                      disabled={busy}
+                      style={({ pressed }) => [
+                        styles.phonePrimaryBtn,
+                        pressed && styles.pressed,
+                        busy && styles.disabled,
+                      ]}
+                    >
+                      {busy ? (
+                        <ActivityIndicator color="#FFF" />
+                      ) : (
+                        <>
+                          <Ionicons name="shield-checkmark-outline" size={16} color="#FFF" />
+                          <Text style={styles.phonePrimaryText}>Allow notifications</Text>
+                        </>
+                      )}
+                    </Pressable>
+                  ) : (
+                    <Pressable
+                      onPress={() => void sendTest()}
+                      disabled={busy}
+                      style={({ pressed }) => [
+                        styles.phonePrimaryBtn,
+                        styles.phonePrimaryBtnOnCard,
+                        pressed && styles.pressed,
+                        busy && styles.disabled,
+                      ]}
+                    >
+                      {busy ? (
+                        <ActivityIndicator color={palette.primary} />
+                      ) : (
+                        <>
+                          <Ionicons name="flash-outline" size={16} color={palette.primary} />
+                          <Text style={styles.phonePrimaryTextOnCard}>Send test alert</Text>
+                        </>
+                      )}
+                    </Pressable>
+                  )}
+                  <Pressable
+                    onPress={() => void notificationService.openSystemNotificationSettings()}
+                    style={({ pressed }) => [styles.phoneGhostBtn, pressed && styles.pressed]}
+                  >
+                    <Text
+                      style={[
+                        styles.phoneGhostText,
+                        phoneEnabled && styles.phoneGhostTextOn,
+                      ]}
+                    >
+                      Open phone Settings
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+
+              {phoneMessage ? (
+                <Text style={[styles.phoneMessage, phoneEnabled && styles.phoneMessageOn]}>
+                  {phoneMessage}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+
+          <View style={styles.sectionRow}>
+            <View style={styles.sectionBlock}>
+              <Text style={styles.sectionTitle}>In-app inbox</Text>
+              <Text style={styles.sectionSubtitle}>
+                {notifications.length === 0
+                  ? 'Nothing here yet'
+                  : `${notifications.length} notification${notifications.length === 1 ? '' : 's'}`}
+              </Text>
+            </View>
+            {unread > 0 ? (
+              <Pressable
+                onPress={onMarkAllRead}
+                style={({ pressed }) => [styles.markAllBtn, pressed && styles.pressed]}
+              >
+                <Text style={styles.markAllText}>Mark all read</Text>
+              </Pressable>
+            ) : null}
+          </View>
 
           {notifications.length === 0 ? (
-            <View style={[styles.emptyCard, shadow]}>
+            <View style={styles.emptyCard}>
               <View style={styles.emptyIcon}>
-                <Ionicons name="notifications-off-outline" size={28} color={palette.textMuted} />
+                <Ionicons name="notifications-outline" size={32} color={palette.textMuted} />
               </View>
-              <Text style={styles.emptyTitle}>No notifications yet</Text>
+              <Text style={styles.emptyTitle}>All caught up</Text>
               <Text style={styles.emptyBody}>
-                Heat alerts, check-in reminders, and safety updates will appear here.
+                When heat risk rises or a check-in is due, alerts will show up here and on your phone.
               </Text>
             </View>
           ) : (
-            <View style={styles.list}>
-              {notifications.map((item) => {
+            <View style={styles.menuCard}>
+              {notifications.map((item, index) => {
                 const meta = TYPE_META[item.type];
                 return (
                   <Pressable
                     key={item.id}
                     onPress={() => openNotification(item)}
                     style={({ pressed }) => [
-                      styles.card,
-                      shadow,
-                      !item.read && styles.cardUnread,
+                      styles.notifRow,
+                      index < notifications.length - 1 && styles.notifRowBorder,
+                      !item.read && styles.notifRowUnread,
                       pressed && styles.pressed,
                     ]}
                   >
-                    <View style={[styles.iconWrap, { backgroundColor: `${meta.color}18` }]}>
+                    <View style={[styles.notifIcon, { backgroundColor: `${meta.color}18` }]}>
                       <Ionicons name={meta.icon} size={20} color={meta.color} />
                     </View>
-                    <View style={styles.cardBody}>
-                      <View style={styles.cardHead}>
-                        <Text style={[styles.cardTitle, !item.read && styles.cardTitleUnread]}>
-                          {item.title}
-                        </Text>
+                    <View style={styles.notifCopy}>
+                      <View style={styles.notifHead}>
+                        <Text style={styles.notifType}>{meta.label}</Text>
                         {!item.read ? <View style={styles.unreadDot} /> : null}
                       </View>
-                      <Text style={styles.cardText}>{item.body}</Text>
-                      <Text style={styles.cardTime}>{formatWhen(item.createdAt)}</Text>
+                      <Text
+                        style={[styles.notifTitle, !item.read && styles.notifTitleUnread]}
+                        numberOfLines={2}
+                      >
+                        {item.title}
+                      </Text>
+                      <Text style={styles.notifBody} numberOfLines={2}>{item.body}</Text>
+                      <Text style={styles.notifTime}>{formatWhen(item.createdAt)}</Text>
                     </View>
                     {item.href ? (
                       <Ionicons name="chevron-forward" size={18} color={palette.textLight} />
@@ -274,38 +330,89 @@ function formatWhen(iso: string): string {
 }
 
 function createStyles(p: AppPalette, isDark: boolean) {
+  const shadow = cardShadow();
+
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: p.background },
     scrollContent: { flexGrow: 1 },
+
+    pageHeader: {
+      marginTop: spacing.sm,
+      marginBottom: spacing.lg,
+    },
+    pageHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing.md,
+    },
+    pageHeaderText: { flex: 1, minWidth: 0, gap: 4 },
+    pageTitle: {
+      fontFamily: fonts.header,
+      fontSize: 28,
+      letterSpacing: -0.5,
+      color: p.text,
+    },
+    pageSubtitle: {
+      ...typography.bodySm,
+      color: p.textMuted,
+      lineHeight: 20,
+    },
+    unreadBadge: {
+      minWidth: 28,
+      height: 28,
+      borderRadius: radius.pill,
+      backgroundColor: p.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: spacing.sm,
+      marginTop: 4,
+    },
+    unreadBadgeText: {
+      fontFamily: fonts.bodySemiBold,
+      fontSize: 13,
+      color: '#FFFFFF',
+    },
+
     phoneCard: {
-      backgroundColor: p.surface,
-      borderRadius: radius.xl,
+      borderRadius: radius.xxl,
+      overflow: 'hidden',
+      marginBottom: spacing.xxl,
       borderWidth: 1,
-      borderColor: p.primary,
+      borderColor: isDark ? 'rgba(59,130,246,0.35)' : 'rgba(37,99,235,0.2)',
+      ...shadow,
+    },
+    phoneCardInner: {
       padding: spacing.lg,
-      marginBottom: spacing.xl,
       gap: spacing.md,
     },
     phoneHead: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
     phoneIcon: {
-      width: 42,
-      height: 42,
+      width: 48,
+      height: 48,
       borderRadius: radius.md,
       backgroundColor: p.primarySoft,
       alignItems: 'center',
       justifyContent: 'center',
+      flexShrink: 0,
+    },
+    phoneIconOn: {
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.35)',
     },
     phoneTextWrap: { flex: 1, minWidth: 0, gap: 4 },
     phoneTitle: {
       fontFamily: fonts.headerSemi,
-      fontSize: 16,
+      fontSize: 17,
       color: p.text,
     },
+    phoneTitleOn: { color: '#FFFFFF' },
     phoneBody: {
       ...typography.bodySm,
       color: p.textMuted,
       lineHeight: 20,
     },
+    phoneBodyOn: { color: 'rgba(255,255,255,0.88)' },
     phoneActions: { gap: spacing.sm },
     phonePrimaryBtn: {
       flexDirection: 'row',
@@ -317,10 +424,18 @@ function createStyles(p: AppPalette, isDark: boolean) {
       minHeight: 48,
       paddingHorizontal: spacing.lg,
     },
+    phonePrimaryBtnOnCard: {
+      backgroundColor: '#FFFFFF',
+    },
     phonePrimaryText: {
       fontFamily: fonts.bodySemiBold,
       fontSize: 15,
       color: '#FFFFFF',
+    },
+    phonePrimaryTextOnCard: {
+      fontFamily: fonts.bodySemiBold,
+      fontSize: 15,
+      color: p.primary,
     },
     phoneGhostBtn: {
       alignItems: 'center',
@@ -331,14 +446,34 @@ function createStyles(p: AppPalette, isDark: boolean) {
       fontSize: 14,
       color: p.primary,
     },
+    phoneGhostTextOn: { color: 'rgba(255,255,255,0.92)' },
     phoneMessage: {
       ...typography.caption,
       color: p.textSecondary,
     },
+    phoneMessageOn: { color: 'rgba(255,255,255,0.85)' },
     disabled: { opacity: 0.7 },
+
+    sectionRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      gap: spacing.md,
+      marginBottom: spacing.sm,
+    },
+    sectionBlock: { flex: 1, minWidth: 0, gap: 2 },
+    sectionTitle: {
+      fontFamily: fonts.headerSemi,
+      fontSize: 17,
+      color: p.text,
+      letterSpacing: -0.2,
+    },
+    sectionSubtitle: {
+      ...typography.caption,
+      color: p.textMuted,
+      lineHeight: 17,
+    },
     markAllBtn: {
-      alignSelf: 'flex-end',
-      marginBottom: spacing.md,
       paddingVertical: spacing.xs,
       paddingHorizontal: spacing.sm,
     },
@@ -347,6 +482,7 @@ function createStyles(p: AppPalette, isDark: boolean) {
       fontSize: 14,
       color: p.primary,
     },
+
     emptyCard: {
       backgroundColor: p.surface,
       borderRadius: radius.xl,
@@ -355,10 +491,11 @@ function createStyles(p: AppPalette, isDark: boolean) {
       padding: spacing.xxl,
       alignItems: 'center',
       gap: spacing.sm,
+      ...shadow,
     },
     emptyIcon: {
-      width: 56,
-      height: 56,
+      width: 64,
+      height: 64,
       borderRadius: radius.pill,
       backgroundColor: p.surfaceInset,
       alignItems: 'center',
@@ -376,60 +513,73 @@ function createStyles(p: AppPalette, isDark: boolean) {
       textAlign: 'center',
       lineHeight: 22,
     },
-    list: { gap: spacing.md },
-    card: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: spacing.md,
+
+    menuCard: {
       backgroundColor: p.surface,
       borderRadius: radius.xl,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: p.border,
-      padding: spacing.lg,
+      overflow: 'hidden',
+      marginBottom: spacing.lg,
+      ...shadow,
     },
-    cardUnread: {
-      borderColor: isDark ? 'rgba(37,99,235,0.35)' : 'rgba(37,99,235,0.2)',
-      backgroundColor: isDark ? p.surface : p.surfaceInset,
+    notifRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing.md,
+      paddingVertical: spacing.lg,
+      paddingHorizontal: spacing.lg,
     },
-    iconWrap: {
-      width: 40,
-      height: 40,
+    notifRowBorder: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: p.borderLight,
+    },
+    notifRowUnread: {
+      backgroundColor: isDark ? 'rgba(37,99,235,0.08)' : p.primarySoft,
+    },
+    notifIcon: {
+      width: 42,
+      height: 42,
       borderRadius: radius.md,
       alignItems: 'center',
       justifyContent: 'center',
       flexShrink: 0,
     },
-    cardBody: { flex: 1, minWidth: 0, gap: 4 },
-    cardHead: {
+    notifCopy: { flex: 1, minWidth: 0, gap: 3 },
+    notifHead: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.sm,
     },
-    cardTitle: {
-      fontFamily: fonts.bodySemiBold,
-      fontSize: 15,
-      color: p.text,
-      flex: 1,
-    },
-    cardTitleUnread: {
-      color: p.primary,
+    notifType: {
+      ...typography.overline,
+      fontSize: 10,
+      color: p.textMuted,
     },
     unreadDot: {
-      width: 8,
-      height: 8,
+      width: 7,
+      height: 7,
       borderRadius: 4,
       backgroundColor: p.primary,
     },
-    cardText: {
-      ...typography.bodySm,
-      color: p.textSecondary,
+    notifTitle: {
+      fontFamily: fonts.bodySemiBold,
+      fontSize: 15,
+      color: p.text,
       lineHeight: 20,
     },
-    cardTime: {
+    notifTitleUnread: { color: p.primary },
+    notifBody: {
+      ...typography.bodySm,
+      color: p.textSecondary,
+      lineHeight: 19,
+    },
+    notifTime: {
       ...typography.caption,
       color: p.textLight,
       marginTop: 2,
     },
+
     pressed: { opacity: 0.88 },
   });
 }

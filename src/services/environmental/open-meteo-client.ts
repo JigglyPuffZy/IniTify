@@ -1,6 +1,10 @@
 import { computeHeatIndexFromTempHumidity } from './pagasa/heat-index-calculator';
 import type { CurrentWeatherSnapshot } from '@/src/models/weather';
-import { TUGUEGARAO_WEATHER_LABEL } from '@/src/utils/tuguegarao-weather-location';
+import {
+  TUGUEGARAO_WEATHER_LABEL,
+  type TuguegaraoWeatherCoordSource,
+} from '@/src/utils/tuguegarao-weather-location';
+import { parseOpenMeteoObservationTime } from '@/src/utils/weather-display';
 
 /** Open-Meteo forecast current-weather response (subset). */
 interface OpenMeteoCurrentResponse {
@@ -76,21 +80,30 @@ function degreesToCompass(degrees: number | undefined): string {
 }
 
 /**
- * Heat index for risk: prefer Rothfusz from temp + humidity,
- * then apparent temperature, then air temperature. Do not take a max of all.
+ * Heat index for risk: Rothfusz from temp + humidity, then compare with Open-Meteo
+ * apparent temperature — use the higher value in humid tropics (PAGASA-style stress).
  */
 function resolveHeatIndexC(params: {
   tempC: number;
   humidity?: number | null;
   apparentC?: number | null;
 }): number {
+  let computed: number | null = null;
   if (typeof params.humidity === 'number' && !Number.isNaN(params.humidity)) {
-    const computed = computeHeatIndexFromTempHumidity(params.tempC, params.humidity);
-    if (computed != null) return Math.round(computed * 10) / 10;
+    const fromRh = computeHeatIndexFromTempHumidity(params.tempC, params.humidity);
+    if (fromRh != null) computed = fromRh;
   }
-  if (typeof params.apparentC === 'number' && !Number.isNaN(params.apparentC)) {
-    return Math.round(params.apparentC * 10) / 10;
+
+  const apparent =
+    typeof params.apparentC === 'number' && !Number.isNaN(params.apparentC)
+      ? Math.round(params.apparentC * 10) / 10
+      : null;
+
+  if (computed != null && apparent != null) {
+    return Math.max(computed, apparent);
   }
+  if (computed != null) return computed;
+  if (apparent != null) return apparent;
   return Math.round(params.tempC * 10) / 10;
 }
 
@@ -134,7 +147,47 @@ async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Respons
   }
 }
 
-function parseOpenMeteoResponse(json: OpenMeteoCurrentResponse): CurrentWeatherSnapshot | null {
+export type OpenMeteoFetchContext = {
+  queryLatitude: number;
+  queryLongitude: number;
+  coordSource: TuguegaraoWeatherCoordSource;
+};
+
+function buildSnapshot(
+  base: Omit<
+    CurrentWeatherSnapshot,
+    | 'observationAt'
+    | 'fetchedAt'
+    | 'lastUpdated'
+    | 'queryLatitude'
+    | 'queryLongitude'
+    | 'gridLatitude'
+    | 'gridLongitude'
+    | 'coordSource'
+  >,
+  observationTime: string,
+  grid: OpenMeteoCurrentResponse,
+  ctx: OpenMeteoFetchContext,
+): CurrentWeatherSnapshot {
+  const observationAt = parseOpenMeteoObservationTime(observationTime);
+  const fetchedAt = new Date().toISOString();
+  return {
+    ...base,
+    observationAt,
+    fetchedAt,
+    lastUpdated: observationAt,
+    queryLatitude: ctx.queryLatitude,
+    queryLongitude: ctx.queryLongitude,
+    gridLatitude: grid.latitude ?? null,
+    gridLongitude: grid.longitude ?? null,
+    coordSource: ctx.coordSource,
+  };
+}
+
+function parseOpenMeteoResponse(
+  json: OpenMeteoCurrentResponse,
+  ctx: OpenMeteoFetchContext,
+): CurrentWeatherSnapshot | null {
   const current = json.current;
   if (current?.temperature_2m != null && !Number.isNaN(current.temperature_2m)) {
     const tempC = current.temperature_2m;
@@ -143,46 +196,57 @@ function parseOpenMeteoResponse(json: OpenMeteoCurrentResponse): CurrentWeatherS
     const heatIndexC = resolveHeatIndexC({ tempC, humidity, apparentC });
     const feelsLikeC = apparentC ?? heatIndexC;
 
-    return {
-      locationName: TUGUEGARAO_WEATHER_LABEL,
-      tempC: Math.round(tempC * 10) / 10,
-      feelsLikeC: Math.round(feelsLikeC * 10) / 10,
-      heatIndexC,
-      humidity: humidity ?? 0,
-      conditionText: weatherCodeToText(current.weather_code),
-      conditionIconUrl: '',
-      windKph: Math.round((current.wind_speed_10m ?? 0) * 10) / 10,
-      windDir: degreesToCompass(current.wind_direction_10m),
-      isDay: current.is_day === 1,
-      lastUpdated: current.time ?? new Date().toISOString(),
-      source: 'open-meteo',
-    };
+    return buildSnapshot(
+      {
+        locationName: TUGUEGARAO_WEATHER_LABEL,
+        tempC: Math.round(tempC * 10) / 10,
+        feelsLikeC: Math.round(feelsLikeC * 10) / 10,
+        heatIndexC,
+        humidity: humidity ?? 0,
+        conditionText: weatherCodeToText(current.weather_code),
+        conditionIconUrl: '',
+        windKph: Math.round((current.wind_speed_10m ?? 0) * 10) / 10,
+        windDir: degreesToCompass(current.wind_direction_10m),
+        isDay: current.is_day === 1,
+        source: 'open-meteo',
+      },
+      current.time ?? new Date().toISOString(),
+      json,
+      ctx,
+    );
   }
 
   const legacy = json.current_weather;
   if (legacy?.temperature != null && !Number.isNaN(legacy.temperature)) {
     const tempC = legacy.temperature;
     const heatIndexC = resolveHeatIndexC({ tempC, humidity: null, apparentC: null });
-    return {
-      locationName: TUGUEGARAO_WEATHER_LABEL,
-      tempC: Math.round(tempC * 10) / 10,
-      feelsLikeC: heatIndexC,
-      heatIndexC,
-      humidity: 0,
-      conditionText: weatherCodeToText(legacy.weathercode),
-      conditionIconUrl: '',
-      windKph: Math.round((legacy.windspeed ?? 0) * 10) / 10,
-      windDir: degreesToCompass(legacy.winddirection),
-      isDay: legacy.is_day === 1,
-      lastUpdated: legacy.time ?? new Date().toISOString(),
-      source: 'open-meteo',
-    };
+    return buildSnapshot(
+      {
+        locationName: TUGUEGARAO_WEATHER_LABEL,
+        tempC: Math.round(tempC * 10) / 10,
+        feelsLikeC: heatIndexC,
+        heatIndexC,
+        humidity: 0,
+        conditionText: weatherCodeToText(legacy.weathercode),
+        conditionIconUrl: '',
+        windKph: Math.round((legacy.windspeed ?? 0) * 10) / 10,
+        windDir: degreesToCompass(legacy.winddirection),
+        isDay: legacy.is_day === 1,
+        source: 'open-meteo',
+      },
+      legacy.time ?? new Date().toISOString(),
+      json,
+      ctx,
+    );
   }
 
   return null;
 }
 
-async function fetchOpenMeteoOnce(url: string): Promise<CurrentWeatherSnapshot | null> {
+async function fetchOpenMeteoOnce(
+  url: string,
+  ctx: OpenMeteoFetchContext,
+): Promise<CurrentWeatherSnapshot | null> {
   const response = await fetchWithTimeout(url, 12_000);
   const json = (await response.json()) as OpenMeteoCurrentResponse;
 
@@ -190,7 +254,7 @@ async function fetchOpenMeteoOnce(url: string): Promise<CurrentWeatherSnapshot |
     throw new Error(json.reason ?? `Open-Meteo error (${response.status})`);
   }
 
-  return parseOpenMeteoResponse(json);
+  return parseOpenMeteoResponse(json, ctx);
 }
 
 /**
@@ -201,7 +265,13 @@ async function fetchOpenMeteoOnce(url: string): Promise<CurrentWeatherSnapshot |
 export async function fetchOpenMeteoCurrent(
   latitude: number,
   longitude: number,
+  ctx?: Partial<OpenMeteoFetchContext>,
 ): Promise<CurrentWeatherSnapshot> {
+  const fetchCtx: OpenMeteoFetchContext = {
+    queryLatitude: ctx?.queryLatitude ?? latitude,
+    queryLongitude: ctx?.queryLongitude ?? longitude,
+    coordSource: ctx?.coordSource ?? 'pagasa_station',
+  };
   const cacheBust = `_t=${Date.now()}`;
   const attempts = [
     buildForecastUrl(latitude, longitude),
@@ -213,7 +283,7 @@ export async function fetchOpenMeteoCurrent(
   for (const baseUrl of attempts) {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const snapshot = await fetchOpenMeteoOnce(`${baseUrl}&${cacheBust}`);
+        const snapshot = await fetchOpenMeteoOnce(`${baseUrl}&${cacheBust}`, fetchCtx);
         if (snapshot) return snapshot;
         throw new Error('Open-Meteo returned no current conditions.');
       } catch (error) {

@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/src/context/AuthContext';
 import { useIniTify } from '@/src/context/IniTifyContext';
+import { BrandMark } from '@/src/components/auth/BrandMark';
 import { Screen } from '@/src/components/layout/Screen';
 import { SurfaceCard } from '@/src/components/ScreenContainer';
 import { Button } from '@/src/components/UiComponents';
@@ -33,7 +35,7 @@ import { validateAge, validateRequired } from '@/src/utils/validation';
 import { isProfileComplete } from '@/src/utils/profile-storage';
 import { DISCLAIMER } from '@/src/constants/risk-levels';
 import { DEFAULT_REMINDER_SETTINGS } from '@/src/models/check-in';
-import { radius, spacing, typography } from '@/src/theme';
+import { radius, spacing, typography, fonts } from '@/src/theme';
 import { useAppTheme } from '@/src/theme/useAppTheme';
 import type { AppPalette } from '@/src/theme/palettes';
 
@@ -181,8 +183,8 @@ export default function SetupScreen() {
   }
 
   const heroTitles = [
-    { title: 'About you', subtitle: 'Basic details for your heat-risk profile' },
-    { title: 'Daily habits', subtitle: 'How active you are and how you stay hydrated' },
+    { title: 'About you', subtitle: 'Name, age, and health conditions' },
+    { title: 'Daily habits', subtitle: 'Activity, hydration, and emergency contact' },
   ] as const;
 
   const hero = heroTitles[step - 1];
@@ -202,11 +204,30 @@ export default function SetupScreen() {
       <FormProgress current={step} total={STEPS.length} labels={[...STEPS]} />
 
       {step === 1 ? (
+        <View style={styles.welcomeBanner}>
+          <LinearGradient
+            colors={isDark ? ['#1E3A8A', '#2563EB'] : ['#2563EB', '#3B82F6']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.welcomeGradient}
+          >
+            <BrandMark size={52} />
+            <View style={styles.welcomeCopy}>
+              <Text style={styles.welcomeTitle}>Your heat safety profile</Text>
+              <Text style={styles.welcomeBody}>
+                IniTify uses this to tailor risk levels and check-in guidance for Tuguegarao.
+              </Text>
+            </View>
+          </LinearGradient>
+        </View>
+      ) : null}
+
+      {step === 1 ? (
         <SurfaceCard>
           <FormSection
             step={1}
             title="Personal details"
-            description="Used to calculate your personalized heat risk"
+            description="Helps calculate your personal heat risk"
           >
             <FormRow>
               <View style={styles.nameField}>
@@ -282,7 +303,7 @@ export default function SetupScreen() {
           <View style={styles.infoTip}>
             <Ionicons name="shield-checkmark-outline" size={16} color={palette.primary} />
             <Text style={styles.infoTipText}>
-              Your data stays on this device and is only used for heat-risk guidance.
+              Stored on this device and used only for heat safety guidance.
             </Text>
           </View>
         </SurfaceCard>
@@ -324,7 +345,7 @@ export default function SetupScreen() {
           <SurfaceCard style={styles.optionalCard}>
             <FormSection
               title="Emergency contact"
-              description="Optional — someone we can help you reach quickly"
+              description="Optional — for quick reach in an emergency"
               icon="call-outline"
             >
               <FormRow>
@@ -390,6 +411,32 @@ export default function SetupScreen() {
 
 function createSetupStyles(palette: AppPalette, isDark: boolean) {
   return StyleSheet.create({
+    welcomeBanner: {
+      borderRadius: radius.xl,
+      overflow: 'hidden',
+      marginBottom: spacing.sm,
+    },
+    welcomeGradient: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      padding: spacing.lg,
+    },
+    welcomeCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    welcomeTitle: {
+      fontFamily: fonts.bodySemiBold,
+      fontSize: 16,
+      color: '#FFFFFF',
+    },
+    welcomeBody: {
+      fontFamily: fonts.body,
+      fontSize: 13,
+      lineHeight: 18,
+      color: 'rgba(255,255,255,0.88)',
+    },
     nameField: { flex: 2, minWidth: 0 },
     ageField: { flex: 1, minWidth: 88, maxWidth: 110 },
     halfField: { flex: 1, minWidth: 0 },

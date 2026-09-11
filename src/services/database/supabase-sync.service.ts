@@ -9,6 +9,7 @@ import type { ServiceResult } from '@/src/models/service-result';
 import type { Recommendation } from '@/src/models/recommendations';
 import type { EmergencyContact, UserProfile } from '@/src/models/user';
 import { hydrationStatusToDb, normalizeHydrationStatus, normalizeProfile } from '@/src/models/user';
+import { normalizeProfileAvatarId } from '@/src/constants/profile-avatars';
 import type { HealthCheckIn, ReminderSettings } from '@/src/models/check-in';
 import type { WeatherSafetyAcknowledgment } from '@/src/models/check-in';
 import { getDeviceUuid } from '@/src/utils/device-id';
@@ -135,6 +136,7 @@ function mapRiskRowToProfile(displayName: string, row: Record<string, unknown>):
 
   return normalizeProfile({
     name: displayName,
+    avatarId: row.avatar_id ? normalizeProfileAvatarId(String(row.avatar_id)) : null,
     riskFactors: {
       age: row.age != null ? Number(row.age) : null,
       healthCondition: String(row.health_condition ?? 'None'),
@@ -433,11 +435,19 @@ export const supabaseSyncService = {
       hydration_status: hydrationStatusToDb(profile.riskFactors.hydrationStatus),
       general_status: profile.riskFactors.generalStatus ?? 'Feeling Well',
       health_conditions: profile.riskFactors.healthConditions ?? [],
+      avatar_id: profile.avatarId ?? null,
       is_current: true,
     });
 
     if (profileError) {
       return { status: 'error', data: null, message: profileError.message };
+    }
+
+    if (profile.avatarId) {
+      await supabase
+        .from('users')
+        .update({ avatar_id: profile.avatarId, updated_at: new Date().toISOString() })
+        .eq('id', userId);
     }
 
     if (emergencyContact?.phone) {

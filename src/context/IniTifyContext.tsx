@@ -11,6 +11,7 @@ import React, {
 import type { UserProfile, EmergencyContact } from '@/src/models/user';
 import { normalizeProfile } from '@/src/models/user';
 import type { HealthCheckIn, ReminderSettings } from '@/src/models/check-in';
+import type { CheckInChatDraft } from '@/src/models/check-in-chat';
 import { DEFAULT_REMINDER_SETTINGS } from '@/src/models/check-in';
 import type { HeatRiskLevel, RiskAssessmentResult } from '@/src/models/risk';
 import type { InAppNotification } from '@/src/models/in-app-notification';
@@ -27,6 +28,7 @@ import { recommendationService } from '@/src/services/recommendations/recommenda
 import { databaseService } from '@/src/services/database/database.service';
 import { appConfig } from '@/src/config/app.config';
 import { resolveTuguegaraoWeatherCoords } from '@/src/utils/tuguegarao-weather-location';
+import { normalizeWeatherSnapshot } from '@/src/utils/weather-display';
 import { checkInService } from '@/src/services/check-in/check-in.service';
 import { reminderManager } from '@/src/services/check-in/reminder-manager.service';
 import { shouldShowWeatherSafetyAlert, shouldSendPeriodicReminder } from '@/src/services/check-in/reminder-scheduler.service';
@@ -83,6 +85,7 @@ interface IniTifyContextValue {
     generalStatus: string;
     notes?: string;
   }) => Promise<HealthCheckIn>;
+  adaptProfileFromCheckInDraft: (draft: CheckInChatDraft) => Promise<void>;
   updateReminderSettings: (settings: ReminderSettings) => Promise<ReminderSettings>;
   refreshCheckInData: () => Promise<void>;
   inAppNotifications: InAppNotification[];
@@ -210,7 +213,7 @@ export function IniTifyProvider({ children }: { children: ReactNode }) {
           setHeatDataMessage('Showing cached heat data.');
         }
         if (cachedWeather) {
-          setCurrentWeather(cachedWeather);
+          setCurrentWeather(normalizeWeatherSnapshot(cachedWeather));
         }
 
         // Unblock "Loading your account profile…" ASAP
@@ -338,6 +341,7 @@ export function IniTifyProvider({ children }: { children: ReactNode }) {
         const result = await environmentalService.fetchHeatIndex(
           weatherCoords.latitude,
           weatherCoords.longitude,
+          { coordSource: weatherCoords.source },
         );
         setHeatDataMessage(result.message);
 
@@ -391,7 +395,7 @@ export function IniTifyProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        // Restart 15-minute countdown after every refresh attempt (live or not)
+        // Restart countdown after every refresh attempt (live or not)
         setNextWeatherRefreshAt(Date.now() + WEATHER_AUTO_REFRESH_MS);
         setWeatherRefreshSecondsLeft(Math.floor(WEATHER_AUTO_REFRESH_MS / 1000));
       } finally {
@@ -524,6 +528,36 @@ export function IniTifyProvider({ children }: { children: ReactNode }) {
       return record;
     },
     [user, profile, saveProfile, heatReading, assessment],
+  );
+
+  const adaptProfileFromCheckInDraft = useCallback(
+    async (draft: CheckInChatDraft) => {
+      if (!profile) return;
+
+      const nextRiskFactors = { ...profile.riskFactors };
+      let changed = false;
+
+      if (draft.hydrationStatus && draft.hydrationStatus !== profile.riskFactors.hydrationStatus) {
+        nextRiskFactors.hydrationStatus = draft.hydrationStatus;
+        changed = true;
+      }
+      if (draft.activityLevel && draft.activityLevel !== profile.riskFactors.activityLevel) {
+        nextRiskFactors.activityLevel = draft.activityLevel;
+        changed = true;
+      }
+      if (draft.generalStatus && draft.generalStatus !== profile.riskFactors.generalStatus) {
+        nextRiskFactors.generalStatus = draft.generalStatus;
+        changed = true;
+      }
+
+      if (!changed) return;
+
+      await saveProfile({
+        ...profile,
+        riskFactors: nextRiskFactors,
+      });
+    },
+    [profile, saveProfile],
   );
 
   const updateReminderSettings = useCallback(
@@ -729,7 +763,7 @@ export function IniTifyProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(id);
   }, [user, profile, nextWeatherRefreshAt, refreshHeatData]);
 
-  // When app returns to foreground, refresh if the 15-min window already elapsed
+  // When app returns to foreground, refresh if the auto-refresh window already elapsed
   useEffect(() => {
     if (!user || !profile) return;
 
@@ -758,6 +792,9 @@ export function IniTifyProvider({ children }: { children: ReactNode }) {
     profile?.riskFactors.generalStatus,
     heatReading?.heatIndex,
     heatReading?.retrievedAt,
+    currentWeather?.heatIndexC,
+    currentWeather?.humidity,
+    currentWeather?.lastUpdated,
     runAssessment,
   ]);
 
@@ -799,6 +836,7 @@ export function IniTifyProvider({ children }: { children: ReactNode }) {
       lastCheckIn,
       reminderSettings,
       submitCheckIn,
+      adaptProfileFromCheckInDraft,
       updateReminderSettings,
       refreshCheckInData,
       inAppNotifications,
@@ -833,6 +871,7 @@ export function IniTifyProvider({ children }: { children: ReactNode }) {
       lastCheckIn,
       reminderSettings,
       submitCheckIn,
+      adaptProfileFromCheckInDraft,
       updateReminderSettings,
       refreshCheckInData,
       inAppNotifications,

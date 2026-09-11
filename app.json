@@ -2,7 +2,7 @@
   "expo": {
     "name": "IniTify",
     "slug": "IniTify",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "initify",
@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.initify.app",
-      "versionCode": 11,
+      "versionCode": 13,
       "softwareKeyboardLayoutMode": "pan",
       "permissions": [
         "android.permission.POST_NOTIFICATIONS",
@@ -61,7 +61,10 @@
           "defaultChannel": "initify-check-in"
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-font",
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

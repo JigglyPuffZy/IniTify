@@ -4,14 +4,20 @@ import {
   HYDRATION_STATUSES,
   type UserProfile,
 } from '@/src/models/user';
-import type { CheckInChatDraft } from '@/src/models/check-in-chat';
+import type { CheckInChatDraft, CheckInChatMessage } from '@/src/models/check-in-chat';
 import { formatConditionLabel, getActiveHealthConditions } from '@/src/constants/health-conditions';
 import type { LiveWeatherFacts } from '@/src/utils/live-heat';
+import {
+  preferenceToUserLanguage,
+  type TifyLanguagePreference,
+} from '@/src/constants/tify-language-preference';
+import { detectTifyUserLanguage, tifyLanguageInstruction } from '@/src/utils/tify-language';
 import {
   CUP_ML,
   HYDRATION_VOLUME_THRESHOLDS,
   WATER_INTAKE_QUICK_REPLIES,
 } from '@/src/utils/hydration-volume';
+import { buildSymptomContextForPrompt } from './tify-symptom-guide';
 import {
   conditionHeatReminder,
   riskLevelGuidance,
@@ -90,7 +96,7 @@ ${buildDashboardWeatherBlock(weather)}
 - NEVER paste canned lines, scripts, templates, or the same opener twice in a row.
 - NEVER use stock phrases like "Narinig ko", "Mga suggestion ko", "Got it — noted", or identical bullet structures every turn.
 - Vary length and tone: short if they said little; fuller if they described pain or worry.
-- Match their language (Taglish ↔ English) and energy.
+- Match their language — Tify understands **Filipino/Tagalog, English, and Taglish**; reply in the same style they use.
 - Do not sound like a form or FAQ. Sound like a real clinician in a back-and-forth chat.
 
 ## STRICT SCOPE
@@ -155,18 +161,125 @@ export function tifyQuickRepliesForDraft(
     return undefined;
   }
   if (draft.step === 'done') return ['Save check-in'];
-  if (!draft.hydrationStatus) {
-    return [...WATER_INTAKE_QUICK_REPLIES];
+  if (!draft.generalStatus) {
+    return ['Feeling Well', 'Mild Discomfort', 'Not Feeling Well'];
   }
   if (!draft.activityLevel) return ['Low', 'Moderate', 'High'];
-  if (!draft.generalStatus) return ['Feeling Well', 'Mild Discomfort', 'Not Feeling Well'];
+  if (!draft.hydrationStatus) {
+    return ['Well Hydrated', 'Needs Hydration', 'Dehydrated / Concerning'];
+  }
   if (!draft.notes) {
-    return ['No symptoms', 'Sakit ng ulo', 'Nahihilo', 'Masakit katawan'];
+    return ['Walang sintomas', 'Sakit ng ulo', 'Nahihilo', 'Masakit katawan'];
   }
   return ['Save check-in', 'Start over'];
 }
 
 export const TIFY_AI_STARTER_REPLIES: string[] = [];
+
+const GUIDED_STEP_HINTS: Record<string, string> = {
+  feeling: 'Ask warmly how they feel in the heat (okay, mild discomfort, or not feeling well).',
+  activity: 'Ask their activity level today (low, moderate, or high).',
+  hydration: 'Ask about hydration (well hydrated, needs water, or dehydrated).',
+  notes: 'Ask if they have heat symptoms (headache, dizziness, nausea) or none.',
+  confirm: 'Show you understood their check-in and invite them to save when ready.',
+  done: 'Confirm the check-in is complete with brief encouragement.',
+};
+
+/** Prompt for AI to rewrite guided check-in replies — flow/buttons stay local. */
+export function buildGuidedCheckInReplyPrompt(params: {
+  profile: UserProfile;
+  heatIndexC: number | null;
+  riskLevel: string | null;
+  draft: CheckInChatDraft;
+  userText: string;
+  weather?: LiveWeatherFacts | null;
+  fallbackReply: string;
+  chatHistory: CheckInChatMessage[];
+  languagePreference: TifyLanguagePreference;
+}): string {
+  const { profile, heatIndexC, riskLevel, draft, userText, weather, fallbackReply, chatHistory, languagePreference } =
+    params;
+  const firstName = profile.name.split(' ')[0] || profile.name;
+  const heatLabel =
+    weather?.heatIndexLabel != null
+      ? `${weather.heatIndexLabel}°C heat index`
+      : heatIndexC != null
+        ? `${heatIndexC.toFixed(1)}°C heat index`
+        : 'unavailable';
+  const step = draft.step === 'greeting' ? 'feeling' : draft.step;
+  const stepHint = GUIDED_STEP_HINTS[step] ?? 'Continue the check-in naturally.';
+  const symptomContext = buildSymptomContextForPrompt({
+    userText,
+    profile,
+  });
+  const detected = detectTifyUserLanguage(userText);
+  const replyLang =
+    languagePreference === 'taglish' ? detected : preferenceToUserLanguage(languagePreference);
+  const recent = chatHistory
+    .slice(-6)
+    .map((m) => `${m.role === 'user' ? 'User' : 'Tify'}: ${m.content}`)
+    .join('\n');
+
+  return `You are Tify — warm heat-safety companion in IniTify (Tuguegarao City). Guided check-in mode.
+
+## Rules
+- User chose language preference: **${languagePreference}**. ${tifyLanguageInstruction(replyLang)}
+- Stay in the user's chosen language unless they clearly switch in this message.
+- Reply in 2–5 sentences.
+- FIRST acknowledge what they literally said — quote or paraphrase their words.
+- THEN ${stepHint}
+- Mention they can tap the buttons below OR type — do not list every button label robotically.
+- Be situational and fresh — NEVER paste the fallback reply verbatim.
+- Use dashboard heat only if relevant: ${heatLabel}. Risk: ${riskLevel ?? 'unknown'}.
+- User: ${firstName}, age ${profile.riskFactors.age ?? 'unknown'}.
+- ${TIFY_DISCLAIMER} — brief only if giving health guidance.
+
+## Parsed check-in data (already saved locally — do not output JSON)
+${JSON.stringify(
+  {
+    generalStatus: draft.generalStatus ?? null,
+    activityLevel: draft.activityLevel ?? null,
+    hydrationStatus: draft.hydrationStatus ?? null,
+    notes: draft.notes ?? null,
+    step,
+  },
+  null,
+  2,
+)}
+
+${symptomContext ? `${symptomContext}\n` : ''}## Recent chat
+${recent || '(start)'}
+
+## User message NOW
+"${userText.trim()}"
+
+## Fallback (structure only — rewrite completely for THIS message)
+${fallbackReply}
+
+Write ONLY Tify's next chat bubble. No CHECK_IN_DATA. No markdown headers.`;
+}
+
+/** Opening greeting when AI is available. */
+export function buildGuidedCheckInGreetingPrompt(params: {
+  profile: UserProfile;
+  weather?: LiveWeatherFacts | null;
+  heatIndexC: number | null;
+  languagePreference: TifyLanguagePreference;
+}): string {
+  const firstName = params.profile.name.split(' ')[0] || params.profile.name;
+  const heat =
+    params.weather?.heatIndexLabel ?? (params.heatIndexC != null ? params.heatIndexC.toFixed(1) : null);
+  const langLine =
+    params.languagePreference === 'en'
+      ? 'Write in English only.'
+      : params.languagePreference === 'tl'
+        ? 'Write in Filipino/Tagalog only.'
+        : 'Write in natural Taglish (Filipino + English).';
+  return `You are Tify in IniTify (Tuguegarao heat-safety app). Write a warm opening check-in message for ${firstName}.
+${heat != null ? `Heat index now: ${heat}°C.` : ''}
+${langLine}
+Ask how they feel in the heat. Invite them to tap buttons below or type. 2–3 sentences. No markdown.`;
+}
 
 export {
   getOffTopicRedirect,

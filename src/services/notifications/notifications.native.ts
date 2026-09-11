@@ -2,19 +2,19 @@
  * Native phone notification helpers for development / EAS builds.
  * Loaded only when canUseNativeNotifications() is true (never in Expo Go).
  */
-import { Platform } from 'react-native';
 import {
-  CHECK_IN_CHANNEL_ID,
-  EMERGENCY_CHANNEL_ID,
-  HEAT_CHANNEL_ID,
-  canUseNativeNotifications,
+    CHECK_IN_CHANNEL_ID,
+    EMERGENCY_CHANNEL_ID,
+    HEAT_CHANNEL_ID,
+    canUseNativeNotifications,
 } from '@/src/services/notifications/notifications.constants';
+import { Platform } from 'react-native';
 
 export {
-  CHECK_IN_CHANNEL_ID,
-  EMERGENCY_CHANNEL_ID,
-  HEAT_CHANNEL_ID,
-  canUseNativeNotifications,
+    CHECK_IN_CHANNEL_ID,
+    EMERGENCY_CHANNEL_ID,
+    HEAT_CHANNEL_ID,
+    canUseNativeNotifications
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

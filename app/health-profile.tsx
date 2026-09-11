@@ -4,6 +4,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Redirect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useIniTify } from '@/src/context/IniTifyContext';
+import { ProfileAvatar } from '@/src/components/ProfileAvatar';
+import { ProfileAvatarPicker } from '@/src/components/ProfileAvatarPicker';
+import { resolveProfileAvatarId, type ProfileAvatarId } from '@/src/constants/profile-avatars';
 import { Screen } from '@/src/components/layout/Screen';
 import { Button } from '@/src/components/UiComponents';
 import { FormField, TextField, SegmentedChoice, ChoiceList } from '@/src/components/FormField';
@@ -59,23 +62,18 @@ const QUICK_LINKS: { title: string; subtitle: string; href: string; icon: IconNa
   },
 ];
 
-function profileInitials(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .map((part) => part.charAt(0))
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-}
-
 export default function HealthProfileScreen() {
   const router = useRouter();
-  const { profile, saveProfile } = useIniTify();
+  const { profile, emergencyContact, saveProfile } = useIniTify();
   const { horizontalPadding } = useResponsive();
   const { palette, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(palette, isDark), [palette, isDark]);
   const shadow = useMemo(() => cardShadow(), []);
+
+  const [avatarId, setAvatarId] = useState<ProfileAvatarId>(
+    resolveProfileAvatarId(profile ?? { avatarId: null }),
+  );
+  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
 
   const [name, setName] = useState(profile?.name ?? '');
   const [age, setAge] = useState(profile?.riskFactors.age?.toString() ?? '');
@@ -101,11 +99,12 @@ export default function HealthProfileScreen() {
     setActivityLevel(profile.riskFactors.activityLevel ?? '');
     setHydrationStatus(profile.riskFactors.hydrationStatus ?? '');
     setGeneralStatus(profile.riskFactors.generalStatus ?? 'Feeling Well');
+    setAvatarId(resolveProfileAvatarId(profile));
   }, [profile]);
 
   if (!profile) return <Redirect href="/" />;
 
-  const initials = profileInitials(name || profile.name);
+  const displayName = name.trim() || profile.name;
   const conditionCount = selectedConditions.filter((c) => c !== 'None').length;
 
   function toggleCondition(condition: string) {
@@ -143,6 +142,7 @@ export default function HealthProfileScreen() {
       const resolvedConditions = finalizeHealthConditions(selectedConditions, otherHealthCondition);
       const updated: UserProfile = {
         name: name.trim(),
+        avatarId,
         riskFactors: {
           ...profile!.riskFactors,
           age: Number(age),
@@ -162,9 +162,8 @@ export default function HealthProfileScreen() {
 
   return (
     <Screen
-      overline="Edit profile"
-      title="Health & Safety"
-      subtitle="Personalize heat-risk guidance for Tuguegarao"
+      title="Edit profile"
+      subtitle="Age, health, activity & hydration shape your personalized heat risk"
       back
       horizontalPadding={horizontalPadding}
     >
@@ -175,20 +174,31 @@ export default function HealthProfileScreen() {
         style={[styles.heroCard, shadow]}
       >
         <View style={styles.heroTop}>
-          <LinearGradient colors={['#3B82F6', '#1D4ED8']} style={styles.heroAvatar}>
-            <Text style={styles.heroAvatarText}>{initials || '?'}</Text>
-          </LinearGradient>
+          <ProfileAvatar
+            name={displayName}
+            avatarId={avatarId}
+            size="lg"
+            showEditBadge
+            onPress={() => setAvatarPickerOpen(true)}
+          />
           <View style={styles.heroText}>
-            <Text style={styles.heroEyebrow}>Preview</Text>
-            <Text style={styles.heroName} numberOfLines={1}>
-              {name.trim() || 'Your name'}
-            </Text>
+            <Text style={styles.heroEyebrow}>Profile preview</Text>
+            <Text style={styles.heroName} numberOfLines={1}>{displayName}</Text>
             <Text style={styles.heroMeta}>
               {age ? `${age} years` : 'Age not set'}
-              {conditionCount > 0 ? ` · ${conditionCount} condition${conditionCount > 1 ? 's' : ''}` : ' · No conditions'}
+              {conditionCount > 0
+                ? ` · ${conditionCount} condition${conditionCount > 1 ? 's' : ''}`
+                : ' · No conditions'}
             </Text>
           </View>
         </View>
+        <Pressable
+          onPress={() => setAvatarPickerOpen(true)}
+          style={({ pressed }) => [styles.heroEditRow, pressed && styles.pressed]}
+        >
+          <Ionicons name="color-palette-outline" size={16} color="rgba(255,255,255,0.9)" />
+          <Text style={styles.heroEditText}>Change avatar</Text>
+        </Pressable>
         <View style={styles.heroFooter}>
           <Ionicons name="shield-checkmark-outline" size={14} color="rgba(255,255,255,0.85)" />
           <Text style={styles.heroFooterText}>
@@ -197,6 +207,14 @@ export default function HealthProfileScreen() {
         </View>
       </LinearGradient>
 
+      <ProfileAvatarPicker
+        visible={avatarPickerOpen}
+        name={displayName}
+        selectedId={avatarId}
+        onSelect={setAvatarId}
+        onClose={() => setAvatarPickerOpen(false)}
+      />
+
       <View style={[styles.sectionCard, shadow]}>
         <View style={styles.sectionHead}>
           <View style={[styles.sectionIcon, { backgroundColor: palette.primarySoft }]}>
@@ -204,7 +222,7 @@ export default function HealthProfileScreen() {
           </View>
           <View style={styles.sectionHeadText}>
             <Text style={styles.sectionTitle}>About you</Text>
-            <Text style={styles.sectionSubtitle}>Basic details for your risk profile</Text>
+            <Text style={styles.sectionSubtitle}>Used in your personalized heat-risk assessment</Text>
           </View>
         </View>
 
@@ -243,7 +261,9 @@ export default function HealthProfileScreen() {
           </View>
           <View style={styles.sectionHeadText}>
             <Text style={styles.sectionTitle}>Health conditions</Text>
-            <Text style={styles.sectionSubtitle}>Select all that apply — tap None if not applicable</Text>
+            <Text style={styles.sectionSubtitle}>
+              Used in your personalized heat-risk assessment — select all that apply
+            </Text>
           </View>
         </View>
 
@@ -315,7 +335,7 @@ export default function HealthProfileScreen() {
           <View style={styles.sectionHeadText}>
             <Text style={styles.sectionTitle}>Activity & hydration</Text>
             <Text style={styles.sectionSubtitle}>
-              Used for heat-risk assessment — updated automatically after check-ins
+              Decision tree factors — shape your personalized heat risk
             </Text>
           </View>
         </View>
@@ -336,6 +356,20 @@ export default function HealthProfileScreen() {
             onSelect={setHydrationStatus}
           />
         </FormField>
+      </View>
+
+      <View style={[styles.sectionCard, shadow]}>
+        <View style={styles.sectionHead}>
+          <View style={[styles.sectionIcon, { backgroundColor: palette.primarySoft }]}>
+            <Ionicons name="happy-outline" size={18} color={palette.primary} />
+          </View>
+          <View style={styles.sectionHeadText}>
+            <Text style={styles.sectionTitle}>How you feel today</Text>
+            <Text style={styles.sectionSubtitle}>
+              For Tify check-ins only — not a decision tree factor
+            </Text>
+          </View>
+        </View>
 
         <FormField label="Current general status">
           <ChoiceList
@@ -344,6 +378,37 @@ export default function HealthProfileScreen() {
             onSelect={setGeneralStatus}
           />
         </FormField>
+      </View>
+
+      <View style={[styles.sectionCard, shadow]}>
+        <View style={styles.sectionHead}>
+          <View style={[styles.sectionIcon, { backgroundColor: '#FEE2E2' }]}>
+            <Ionicons name="call-outline" size={18} color="#DC2626" />
+          </View>
+          <View style={styles.sectionHeadText}>
+            <Text style={styles.sectionTitle}>Emergency contact</Text>
+            <Text style={styles.sectionSubtitle}>
+              Someone to call or text from the Emergency tab
+            </Text>
+          </View>
+        </View>
+        {emergencyContact?.phone ? (
+          <View style={styles.contactPreview}>
+            <Text style={styles.contactName}>{emergencyContact.name}</Text>
+            <Text style={styles.contactPhone}>{emergencyContact.phone}</Text>
+          </View>
+        ) : (
+          <Text style={styles.contactEmpty}>No contact saved yet</Text>
+        )}
+        <Pressable
+          onPress={() => router.push('/emergency-contact')}
+          style={({ pressed }) => [styles.contactEditBtn, pressed && styles.pressed]}
+        >
+          <Ionicons name="pencil" size={16} color={palette.primary} />
+          <Text style={styles.contactEditText}>
+            {emergencyContact?.phone ? 'Edit emergency contact' : 'Add emergency contact'}
+          </Text>
+        </Pressable>
       </View>
 
       <View style={styles.quickSection}>
@@ -399,21 +464,20 @@ function createStyles(p: AppPalette, isDark: boolean) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.md,
-      marginBottom: spacing.md,
+      marginBottom: spacing.sm,
     },
-    heroAvatar: {
-      width: 56,
-      height: 56,
-      borderRadius: radius.pill,
+    heroEditRow: {
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      borderWidth: 2,
-      borderColor: 'rgba(255,255,255,0.35)',
+      gap: spacing.sm,
+      paddingVertical: spacing.sm,
+      marginBottom: spacing.md,
     },
-    heroAvatarText: {
-      fontFamily: fonts.headerSemi,
-      fontSize: 20,
-      color: '#FFFFFF',
+    heroEditText: {
+      ...typography.caption,
+      fontFamily: fonts.bodySemiBold,
+      color: 'rgba(255,255,255,0.92)',
     },
     heroText: { flex: 1, minWidth: 0 },
     heroEyebrow: {
@@ -542,6 +606,44 @@ function createStyles(p: AppPalette, isDark: boolean) {
       paddingTop: spacing.lg,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: p.border,
+    },
+    contactPreview: {
+      backgroundColor: p.surfaceInset,
+      borderRadius: radius.lg,
+      padding: spacing.md,
+      marginBottom: spacing.md,
+      gap: 2,
+    },
+    contactName: {
+      fontFamily: fonts.bodySemiBold,
+      fontSize: 15,
+      color: p.text,
+    },
+    contactPhone: {
+      ...typography.bodySm,
+      fontFamily: fonts.bodySemiBold,
+      color: p.primary,
+    },
+    contactEmpty: {
+      ...typography.bodySm,
+      color: p.textMuted,
+      marginBottom: spacing.md,
+    },
+    contactEditBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      paddingVertical: spacing.md,
+      borderRadius: radius.lg,
+      backgroundColor: p.primarySoft,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(37,99,235,0.3)' : 'rgba(37,99,235,0.15)',
+    },
+    contactEditText: {
+      fontFamily: fonts.bodySemiBold,
+      fontSize: 14,
+      color: p.primary,
     },
     quickSection: { marginBottom: spacing.lg },
     sectionRule: {

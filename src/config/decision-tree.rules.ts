@@ -122,9 +122,9 @@ const highHeatBranch = {
 
 const decisionTreeRules: DecisionTreeRulesDocument = {
   enabled: true,
-  version: '1.2.0-pagasa-noaa-bands',
+  version: '1.3.0-pagasa-heat-index-only',
   description:
-    'PAGASA / NOAA heat-index bands — Danger at 42–51°C, Extreme Danger at ≥52°C, with balanced personal-factor escalation.',
+    'PAGASA / NOAA heat-index bands only — Caution 27–32, Extreme Caution 33–41, Danger 42–51, Extreme Danger 52+.',
   source:
     'DOST-PAGASA heat index classifications (Caution 27–32, Extreme Caution 33–41, Danger 42–51, Extreme Danger 52+).',
   root: {

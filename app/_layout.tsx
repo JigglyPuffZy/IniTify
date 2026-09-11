@@ -50,6 +50,7 @@ function ThemedStack() {
         <Stack.Screen name="check-in" />
         <Stack.Screen name="check-in-history" />
         <Stack.Screen name="health-profile" />
+        <Stack.Screen name="emergency-contact" />
         <Stack.Screen name="reminder-settings" />
         <Stack.Screen name="safety-tips" />
         <Stack.Screen name="+not-found" options={{ headerShown: true, title: 'Not found' }} />

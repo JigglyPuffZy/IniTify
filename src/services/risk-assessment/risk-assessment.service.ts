@@ -1,12 +1,11 @@
 import { primaryHealthCondition } from '@/src/constants/health-conditions';
-import { RISK_LEVEL_LABELS } from '@/src/constants/risk-levels';
+import { formatHeatIndexAssessmentLine } from '@/src/constants/risk-levels';
 import type { HeatIndexReading } from '@/src/models/environmental';
 import type { UserLocation } from '@/src/models/location';
 import type { RiskAssessmentResult } from '@/src/models/risk';
 import type { UserRiskFactors } from '@/src/models/user';
 import type { CurrentWeatherSnapshot } from '@/src/models/weather';
 import { decisionTreeService } from '@/src/services/decision-tree/decision-tree.service';
-import { isUserProfileComplete } from '@/src/utils/validation';
 
 /** Map app profile labels → decision tree training labels */
 function mapRiskFactorsForTree(riskFactors: UserRiskFactors): UserRiskFactors {
@@ -36,7 +35,7 @@ function mapRiskFactorsForTree(riskFactors: UserRiskFactors): UserRiskFactors {
 }
 
 /**
- * Orchestrates environmental + user + location inputs through the vulnerability-aware decision tree.
+ * Orchestrates heat-index reading through PAGASA band classification.
  */
 export const riskAssessmentService = {
   assess(params: {
@@ -58,16 +57,6 @@ export const riskAssessmentService = {
       latitude: params.location?.latitude ?? null,
       longitude: params.location?.longitude ?? null,
     };
-
-    if (!isUserProfileComplete(treeFactors)) {
-      return {
-        level: null,
-        assessedAt: new Date().toISOString(),
-        inputs,
-        source: 'unavailable',
-        message: 'Complete all user risk factors before assessment.',
-      };
-    }
 
     if (params.heatReading === null) {
       return {
@@ -92,12 +81,15 @@ export const riskAssessmentService = {
 
     const data = treeResult.data;
 
+    const heatIndex = params.heatReading.heatIndex;
+    const summary = formatHeatIndexAssessmentLine(heatIndex, data.level);
+
     return {
       level: data.level,
       assessedAt: data.evaluatedAt,
       inputs,
       source: 'decision-tree',
-      message: `Your current heat risk level is ${RISK_LEVEL_LABELS[data.level]}.`,
+      message: summary,
       riskScore: data.riskScore,
       environmentalLevel: data.environmentalLevel,
       vulnerabilityScore: data.vulnerabilityScore,

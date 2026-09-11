@@ -119,7 +119,7 @@ export function evaluateDecisionTree(
         level: null,
         assessment: null,
         error:
-          'Decision Tree missing inputs. Complete age, health, activity, hydration, and heat index.',
+          'Decision Tree missing inputs. Heat index is required.',
       };
     }
     return { level: assessment.level, assessment, error: null };

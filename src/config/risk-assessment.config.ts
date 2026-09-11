@@ -66,17 +66,17 @@ export interface RiskAssessmentConfig {
 }
 
 export const riskAssessmentConfig: RiskAssessmentConfig = {
-  version: '2.1.0-pagasa-noaa-bands',
+  version: '3.0.0-pagasa-heat-index-only',
   environmental: {
     heatIndexBands: [
-      { maxExclusive: PAGASA_HEAT_INDEX_THRESHOLDS.cautionMin, level: 'LOW', label: 'Below Caution' },
+      { maxExclusive: PAGASA_HEAT_INDEX_THRESHOLDS.cautionMin, level: 'LOW', label: 'Low Risk' },
       { maxExclusive: PAGASA_HEAT_INDEX_THRESHOLDS.extremeCautionMin, level: 'MODERATE', label: 'Caution' },
       { maxExclusive: PAGASA_HEAT_INDEX_THRESHOLDS.dangerMin, level: 'HIGH', label: 'Extreme Caution' },
       { maxExclusive: PAGASA_HEAT_INDEX_THRESHOLDS.extremeDangerMin, level: 'EXTREME', label: 'Danger' },
       { maxExclusive: Number.POSITIVE_INFINITY, level: 'CRITICAL', label: 'Extreme Danger' },
     ],
     humidity: {
-      enabled: true,
+      enabled: false,
       highThresholdPercent: 70,
       bumpWhenEnvironmentalAtMost: 'MODERATE',
     },
@@ -102,8 +102,8 @@ export const riskAssessmentConfig: RiskAssessmentConfig = {
     additionalConditionPoints: 1,
   },
   combine: {
-    LOW: { MODERATE: 2, HIGH: 6, EXTREME: 12, CRITICAL: 15 },
-    MODERATE: { HIGH: 3, EXTREME: 10, CRITICAL: 14 },
+    LOW: { MODERATE: 5, HIGH: 9, EXTREME: 14, CRITICAL: 18 },
+    MODERATE: { HIGH: 6, EXTREME: 11, CRITICAL: 15 },
     HIGH: { EXTREME: 5, CRITICAL: 10 },
     EXTREME: { CRITICAL: 3 },
     CRITICAL: {},

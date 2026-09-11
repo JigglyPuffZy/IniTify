@@ -1,3 +1,6 @@
+import type { ProfileAvatarId } from '@/src/constants/profile-avatars';
+import { normalizeProfileAvatarId } from '@/src/constants/profile-avatars';
+
 /** Documented individual risk factors */
 export interface UserRiskFactors {
   age: number | null;
@@ -12,6 +15,8 @@ export interface UserRiskFactors {
 
 export interface UserProfile {
   name: string;
+  /** Optional avatar icon shown on Home and Profile */
+  avatarId?: ProfileAvatarId | null;
   riskFactors: UserRiskFactors;
 }
 
@@ -84,6 +89,7 @@ export function normalizeProfile(profile: UserProfile): UserProfile {
     rf.healthCondition ?? healthConditions.find((c) => c !== 'None') ?? 'None';
   return {
     ...profile,
+    avatarId: normalizeProfileAvatarId(profile.avatarId),
     riskFactors: {
       ...rf,
       healthConditions,

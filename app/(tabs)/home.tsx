@@ -8,6 +8,7 @@ import { HomeOverview } from '@/src/components/HomeOverview';
 import { appConfig } from '@/src/config/app.config';
 import { useResponsive } from '@/src/utils/responsive';
 import { getTimeGreeting } from '@/src/utils/greeting';
+import type { ProfileAvatarId } from '@/src/constants/profile-avatars';
 import { radius, spacing } from '@/src/theme';
 import { useAppTheme } from '@/src/theme/useAppTheme';
 import type { LegacyThemeColors } from '@/src/theme/legacy-colors';
@@ -29,6 +30,7 @@ export default function HomeScreen() {
     applyManualDevHeatIndex,
     refreshHeatData,
     runAssessment,
+    saveProfile,
     weatherRefreshSecondsLeft,
     isWeatherRefreshing,
   } = useIniTify();
@@ -44,6 +46,11 @@ export default function HomeScreen() {
 
   const firstName = profile.name.split(' ')[0];
   const greeting = getTimeGreeting();
+
+  async function handleAvatarChange(avatarId: ProfileAvatarId) {
+    if (!profile) return;
+    await saveProfile({ ...profile, avatarId });
+  }
 
   async function handleRefreshHeat() {
     setRefreshingHeat(true);
@@ -83,15 +90,21 @@ export default function HomeScreen() {
   return (
     <HomeOverview
       firstName={firstName}
+      fullName={profile.name}
       greeting={greeting}
+      avatarId={profile.avatarId}
+      onAvatarChange={handleAvatarChange}
       weather={currentWeather}
       liveWeatherEnabled={liveWeatherEnabled}
       isLive={heatDataSource === 'live'}
       assessmentLevel={assessment?.level ?? null}
-      assessmentMessage={assessment?.message}
+      environmentalLevel={assessment?.environmentalLevel ?? null}
+      assessmentReason={assessment?.reason ?? null}
+      assessedAt={assessment?.assessedAt}
       onCheckRisk={runAssessment}
       horizontalPadding={horizontalPadding}
-      refreshing={refreshingHeat || isWeatherRefreshing}
+      refreshing={refreshingHeat}
+      isWeatherRefreshing={isWeatherRefreshing}
       onRefresh={handleRefreshHeat}
       weatherRefreshSecondsLeft={weatherRefreshSecondsLeft}
       emergencyActive={emergencyState.isActive}

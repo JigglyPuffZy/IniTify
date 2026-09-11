@@ -2,8 +2,8 @@ import type { HeatRiskLevel } from '@/src/models/risk';
 import { riskAssessmentConfig } from '@/src/config/risk-assessment.config';
 import {
   evaluateHealthVulnerability,
-  isCardiovascularCondition,
 } from '@/src/constants/health-vulnerability';
+import { RISK_LEVEL_LABELS, HEAT_INDEX_CLASSIFICATION_BANDS } from '@/src/constants/risk-levels';
 import type { DecisionTreeInput } from './decision-tree.types';
 
 const LEVEL_ORDER: HeatRiskLevel[] = ['LOW', 'MODERATE', 'HIGH', 'EXTREME', 'CRITICAL'];
@@ -79,12 +79,11 @@ function normalizeGeneralStatus(
   return 'Feeling Well';
 }
 
-/** Map app profile labels → normalized decision-tree input */
+/** Map app profile labels → normalized decision-tree input (heat index required). */
 export function normalizeHeatRiskInput(
   input: DecisionTreeInput & { generalStatus?: string | null },
 ): NormalizedHeatRiskInput | null {
-  if (input.heatIndex === null || input.age === null) return null;
-  if (!input.activityLevel || !input.hydrationStatus) return null;
+  if (input.heatIndex === null) return null;
 
   const rawHealth = input.healthCondition?.trim();
   const healthCondition = rawHealth && rawHealth.length > 0 ? rawHealth : 'None';
@@ -98,7 +97,7 @@ export function normalizeHeatRiskInput(
   return {
     heatIndex: input.heatIndex,
     humidityPercent: input.humidityPercent ?? null,
-    age: input.age,
+    age: input.age ?? 25,
     healthCondition,
     healthConditions,
     activityLevel: normalizeActivity(input.activityLevel),
@@ -117,7 +116,7 @@ export function assessEnvironmentalRisk(
   const baseLevel = band?.level ?? 'CRITICAL';
   const baseLabel = band?.label ?? 'Extreme Danger';
   const factors: string[] = [
-    `Heat index ${Math.round(heatIndex)}°C (${baseLabel} band)`,
+    `Heat index ${heatIndex.toFixed(1)}°C (${baseLabel} band)`,
   ];
 
   let level = baseLevel;
@@ -173,23 +172,111 @@ export function assessPersonalVulnerability(input: NormalizedHeatRiskInput): {
     factors.push(`${input.activityLevel} physical activity`);
   }
 
-  const hydrationPoints = vulnerability.hydration[input.hydrationStatus];
-  if (hydrationPoints > 0) {
-    score += hydrationPoints;
-    factors.push(`${input.hydrationStatus.toLowerCase()}`);
-  }
-
-  const statusPoints = vulnerability.generalStatus[input.generalStatus];
-  if (statusPoints > 0) {
-    score += statusPoints;
-    factors.push(input.generalStatus.toLowerCase());
+  const hydrationImpact = hydrationImpactPoints(input.hydrationStatus, health.maxSeverity);
+  if (hydrationImpact.points > 0) {
+    score += hydrationImpact.points;
+    factors.push(hydrationImpact.label);
   }
 
   return { score, factors, health };
 }
 
+/** True when profile shows no meaningful personal heat vulnerability. */
+export function isOptimalHeatProfile(
+  input: NormalizedHeatRiskInput,
+  personal: { score: number; health: { activeLabels: string[] } },
+): boolean {
+  if (personal.score > 0 || personal.health.activeLabels.length > 0) return false;
+  const { vulnerability } = riskAssessmentConfig;
+  return (
+    input.hydrationStatus === 'Well hydrated' &&
+    input.activityLevel === 'Low' &&
+    input.age > vulnerability.age.childMaxAge &&
+    input.age < vulnerability.age.elderlyMinAge
+  );
+}
+
+/**
+ * Weight vulnerability by context — chronic conditions matter more as heat rises;
+ * dehydration and feeling unwell always count.
+ */
+function environmentAdjustedVulnerabilityScore(
+  rawScore: number,
+  environmentalLevel: HeatRiskLevel,
+  input: NormalizedHeatRiskInput,
+): number {
+  if (rawScore <= 0) return 0;
+
+  const acute =
+    (input.hydrationStatus === 'Dehydrated' ? 6 : 0) +
+    (input.hydrationStatus === 'Moderately hydrated' ? 2 : 0) +
+    (input.activityLevel === 'High' ? 2 : 0);
+
+  const chronic = Math.max(0, rawScore - acute);
+
+  if (levelIndex(environmentalLevel) >= levelIndex('HIGH')) {
+    return rawScore;
+  }
+
+  if (environmentalLevel === 'LOW') {
+    return acute + Math.min(chronic, 1);
+  }
+
+  // MODERATE (PAGASA caution band): chronic conditions add partial weight
+  return acute + Math.round(chronic * 0.7);
+}
+
+/** Clinical personal risk — may be below PAGASA band when profile is strong; never below env in danger heat. */
+function resolvePersonalClinicalLevel(params: {
+  environmentalLevel: HeatRiskLevel;
+  environmentalFactors: string[];
+  vulnerabilityScore: number;
+  vulnerabilityFactors: string[];
+  input: NormalizedHeatRiskInput;
+  healthMaxSeverity: number;
+  optimalProfile: boolean;
+}): HeatRiskLevel {
+  const {
+    environmentalLevel,
+    vulnerabilityScore,
+    vulnerabilityFactors,
+    input,
+    healthMaxSeverity,
+    optimalProfile,
+  } = params;
+
+  const adjustedScore = environmentAdjustedVulnerabilityScore(
+    vulnerabilityScore,
+    environmentalLevel,
+    input,
+  );
+
+  let level = combineRiskAssessment({
+    environmentalLevel,
+    environmentalFactors: params.environmentalFactors,
+    vulnerabilityScore: adjustedScore,
+    vulnerabilityFactors,
+    input,
+    healthMaxSeverity,
+  });
+
+  if (optimalProfile && environmentalLevel === 'MODERATE') {
+    return 'LOW';
+  }
+
+  if (levelIndex(environmentalLevel) >= levelIndex('HIGH')) {
+    return maxLevel(level, environmentalLevel);
+  }
+
+  if (environmentalLevel === 'MODERATE' && input.hydrationStatus !== 'Dehydrated') {
+    level = indexToLevel(Math.min(levelIndex(level), levelIndex('HIGH')));
+  }
+
+  return level;
+}
+
 /** Step 3 — combine environmental baseline with vulnerability modifiers. */
-export function combineRiskAssessment(params: {
+function combineRiskAssessment(params: {
   environmentalLevel: HeatRiskLevel;
   environmentalFactors: string[];
   vulnerabilityScore: number;
@@ -243,73 +330,101 @@ export function combineRiskAssessment(params: {
     finalIndex = Math.max(finalIndex, levelIndex('EXTREME'));
   }
 
-  if (
-    input.generalStatus === 'Not Feeling Well' &&
-    envAtLeast(criticalOverrides.notFeelingWellMinEnvironmental)
-  ) {
-    finalIndex = Math.max(finalIndex, levelIndex('EXTREME'));
-  }
-
   return indexToLevel(finalIndex);
 }
 
-function buildRiskScore(finalLevel: HeatRiskLevel, vulnerabilityScore: number): number {
-  const levelComponent = (levelIndex(finalLevel) / (LEVEL_ORDER.length - 1)) * 65;
-  const vulnComponent = Math.min(vulnerabilityScore, 15) / 15 * 35;
-  return Math.round(Math.min(100, levelComponent + vulnComponent));
+function hydrationImpactPoints(
+  hydration: NormalizedHeatRiskInput['hydrationStatus'],
+  healthMaxSeverity: number,
+): { points: number; label: string } {
+  const { hydration: basePoints } = riskAssessmentConfig.vulnerability;
+  const base = basePoints[hydration];
+
+  if (hydration === 'Well hydrated') {
+    return { points: 0, label: 'Well hydrated' };
+  }
+
+  const appLabel = hydration === 'Dehydrated' ? 'Dehydrated / concerning' : 'Needs hydration';
+
+  let bonus = 0;
+  if (healthMaxSeverity >= 4) {
+    bonus = hydration === 'Dehydrated' ? 3 : 2;
+  } else if (healthMaxSeverity >= 3) {
+    bonus = hydration === 'Dehydrated' ? 2 : 1;
+  }
+
+  const points = base + bonus;
+  const label =
+    bonus > 0
+      ? `${appLabel} — higher concern with your health condition(s)`
+      : appLabel;
+
+  return { points, label };
 }
 
-function buildReason(params: {
-  finalLevel: HeatRiskLevel;
+function buildRiskScore(finalLevel: HeatRiskLevel): number {
+  return Math.round((levelIndex(finalLevel) / (LEVEL_ORDER.length - 1)) * 100);
+}
+
+function buildCombinedReason(params: {
+  heatIndex: number;
   environmentalLevel: HeatRiskLevel;
-  environmentalFactors: string[];
-  vulnerabilityFactors: string[];
+  environmentalLabel: string;
+  finalLevel: HeatRiskLevel;
+  personalFactors: string[];
+  optimalProfile: boolean;
 }): string {
-  const { finalLevel, environmentalLevel, environmentalFactors, vulnerabilityFactors } = params;
-  const envPhrase =
-    environmentalLevel === 'LOW'
-      ? 'Current environmental conditions are low risk'
-      : environmentalLevel === 'MODERATE'
-        ? 'Current heat conditions are moderate'
-      : environmentalLevel === 'HIGH'
-        ? 'Current heat conditions are in the extreme caution band'
-        : environmentalLevel === 'EXTREME'
-          ? 'Current heat conditions are in the danger band'
-          : environmentalLevel === 'CRITICAL'
-            ? 'Current heat conditions are in the extreme danger band'
-            : 'Current heat conditions are extreme';
+  const { heatIndex, environmentalLevel, environmentalLabel, finalLevel, personalFactors, optimalProfile } =
+    params;
+  const band = HEAT_INDEX_CLASSIFICATION_BANDS.find((b) => b.level === environmentalLevel);
+  const range = band?.rangeLabel ?? environmentalLabel;
+  const envLabel = RISK_LEVEL_LABELS[environmentalLevel];
 
-  if (vulnerabilityFactors.length === 0) {
-    return `Risk level: ${finalLevel}. ${envPhrase}, and no significant personal heat-risk factors were identified.`;
+  if (optimalProfile && environmentalLevel === 'MODERATE' && finalLevel === 'LOW') {
+    return `${heatIndex.toFixed(1)}°C heat index — outdoor ${envLabel} (${range}). Well hydrated with no conditions; personal risk stays Low Risk.`;
   }
 
-  const personal = vulnerabilityFactors.slice(0, 3).join('; ');
-  const extra =
-    vulnerabilityFactors.length > 3
-      ? ` (+${vulnerabilityFactors.length - 3} more factor${vulnerabilityFactors.length - 3 > 1 ? 's' : ''})`
-      : '';
+  const base = `${heatIndex.toFixed(1)}°C heat index — outdoor ${envLabel} (${range}).`;
 
-  if (levelIndex(finalLevel) > levelIndex(environmentalLevel)) {
-    return `Risk level: ${finalLevel}. ${envPhrase}, but your personal vulnerability (${personal}${extra}) increases your overall heat-related health risk.`;
+  if (finalLevel === environmentalLevel) {
+    if (personalFactors.length === 0) return `${base} Matches your outdoor heat level.`;
+    return `${base} Factors: ${personalFactors.slice(0, 3).join('; ')}.`;
   }
 
-  return `Risk level: ${finalLevel}. ${envPhrase}. Contributing factors: ${personal}${extra}. Environmental context: ${environmentalFactors.join('; ')}.`;
+  if (levelIndex(finalLevel) < levelIndex(environmentalLevel)) {
+    return `${base} Your profile lowers personal risk to ${RISK_LEVEL_LABELS[finalLevel]} — follow heat precautions.`;
+  }
+
+  const yourLabel = RISK_LEVEL_LABELS[finalLevel];
+  const personal = personalFactors.slice(0, 3).join('; ');
+  return `${base} Personal risk: ${yourLabel} (${personal}).`;
 }
 
-function buildRecommendedAction(level: HeatRiskLevel, vulnerabilityFactors: string[]): string {
+function buildRecommendedAction(
+  level: HeatRiskLevel,
+  input?: NormalizedHeatRiskInput,
+  health?: ReturnType<typeof evaluateHealthVulnerability>,
+): string {
   let action = riskAssessmentConfig.recommendations[level];
-  const hasCardio = vulnerabilityFactors.some((f) =>
-    isCardiovascularCondition(f),
-  );
-  if (hasCardio && levelIndex(level) >= levelIndex('MODERATE')) {
-    action += ' Monitor blood pressure and avoid sudden heat exposure if you have cardiovascular conditions.';
+  if (!input) return action;
+
+  if (input.hydrationStatus === 'Dehydrated') {
+    action +=
+      ' You reported dehydration — drink water or ORS now, rest in shade/AC, and seek help if dizzy or confused.';
+  } else if (input.hydrationStatus === 'Moderately hydrated') {
+    action += health?.hasSignificantCondition
+      ? ' With your health profile, drink ~250 ml now and every 30 min while it is hot.'
+      : ' Drink ~250 ml water in the next 15–20 minutes.';
+  } else if (health?.hasSignificantCondition && levelIndex(level) >= levelIndex('MODERATE')) {
+    action += ' Keep sipping fluids regularly — your health profile needs extra hydration in heat.';
   }
+
   return action;
 }
 
 /**
- * Full vulnerability-aware heat risk assessment.
- * Environmental heat index + personal modifiers — never temperature alone.
+ * Heat risk: PAGASA environmental band + personal adaptation (age, health, hydration, activity).
+ * General status is collected for Tify check-ins only — not scored here.
  */
 export function assessHeatRisk(
   input: DecisionTreeInput & { generalStatus?: string | null },
@@ -321,33 +436,38 @@ export function assessHeatRisk(
     normalized.heatIndex,
     normalized.humidityPercent,
   );
-  const vulnerability = assessPersonalVulnerability(normalized);
 
-  const level = combineRiskAssessment({
+  const personal = assessPersonalVulnerability(normalized);
+  const optimalProfile = isOptimalHeatProfile(normalized, personal);
+
+  const level = resolvePersonalClinicalLevel({
     environmentalLevel: environmental.level,
     environmentalFactors: environmental.factors,
-    vulnerabilityScore: vulnerability.score,
-    vulnerabilityFactors: vulnerability.factors,
+    vulnerabilityScore: personal.score,
+    vulnerabilityFactors: personal.factors,
     input: normalized,
-    healthMaxSeverity: vulnerability.health.maxSeverity,
+    healthMaxSeverity: personal.health.maxSeverity,
+    optimalProfile,
   });
 
-  const primaryRiskFactors = [...environmental.factors, ...vulnerability.factors];
-  const riskScore = buildRiskScore(level, vulnerability.score);
+  const primaryRiskFactors = [...environmental.factors, ...personal.factors];
+  const riskScore = buildRiskScore(level);
 
   return {
     level,
     riskScore,
     environmentalLevel: environmental.level,
-    vulnerabilityScore: vulnerability.score,
+    vulnerabilityScore: personal.score,
     primaryRiskFactors,
-    reason: buildReason({
-      finalLevel: level,
+    reason: buildCombinedReason({
+      heatIndex: normalized.heatIndex,
       environmentalLevel: environmental.level,
-      environmentalFactors: environmental.factors,
-      vulnerabilityFactors: vulnerability.factors,
+      environmentalLabel: environmental.label,
+      finalLevel: level,
+      personalFactors: personal.factors,
+      optimalProfile,
     }),
-    recommendedAction: buildRecommendedAction(level, vulnerability.factors),
+    recommendedAction: buildRecommendedAction(level, normalized, personal.health),
   };
 }
 
@@ -365,7 +485,5 @@ export function countRiskFactors(input: NormalizedHeatRiskInput): number {
   if (hasHealthRisk(input.healthCondition)) factors += 1;
   if (input.activityLevel === 'High') factors += 1;
   if (input.hydrationStatus === 'Dehydrated') factors += 1;
-  if (input.generalStatus === 'Mild Discomfort') factors += 1;
-  if (input.generalStatus === 'Not Feeling Well') factors += 1;
   return factors;
 }

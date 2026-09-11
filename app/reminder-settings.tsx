@@ -1,21 +1,21 @@
-import { useMemo, useState } from 'react';
-import { StyleSheet, View, Text, Pressable, Switch, TextInput } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Redirect, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useIniTify } from '@/src/context/IniTifyContext';
 import { Screen } from '@/src/components/layout/Screen';
 import { SurfaceCard } from '@/src/components/ScreenContainer';
 import { Button } from '@/src/components/UiComponents';
+import { useIniTify } from '@/src/context/IniTifyContext';
 import {
-  REMINDER_FREQUENCY_OPTIONS,
-  type ReminderFrequency,
-  type ReminderSettings,
+    REMINDER_FREQUENCY_OPTIONS,
+    type ReminderFrequency,
+    type ReminderSettings,
 } from '@/src/models/check-in';
-import { useResponsive } from '@/src/utils/responsive';
-import { useAppTheme } from '@/src/theme/useAppTheme';
+import { cardShadow, fonts, radius, spacing, typography } from '@/src/theme';
 import type { AppPalette } from '@/src/theme/palettes';
-import { spacing, radius, typography, fonts, cardShadow } from '@/src/theme';
+import { useAppTheme } from '@/src/theme/useAppTheme';
+import { useResponsive } from '@/src/utils/responsive';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Redirect, useRouter } from 'expo-router';
+import { useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 const FREQUENCY_ICONS: Record<ReminderFrequency, React.ComponentProps<typeof Ionicons>['name']> = {
   every_2h: 'time-outline',

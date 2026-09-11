@@ -31,4 +31,24 @@ describe('check-in draft merge', () => {
     expect(next.hydrationStatus).toBe('Well Hydrated');
     expect(next.waterIntakeLiters).toBe(2);
   });
+
+  it('parses "not feeling well" as Not Feeling Well (not Feeling Well)', () => {
+    const next = checkInChatService.applyUserTextToDraft(emptyDraft, 'not feeling well');
+    expect(next.generalStatus).toBe('Not Feeling Well');
+  });
+
+  it('parses quick-reply chip for general wellness', () => {
+    const next = checkInChatService.applyUserTextToDraft(emptyDraft, 'Not Feeling Well');
+    expect(next.generalStatus).toBe('Not Feeling Well');
+  });
+
+  it('parses Tagalog okay ako as Feeling Well', () => {
+    const next = checkInChatService.applyUserTextToDraft(emptyDraft, 'okay ako');
+    expect(next.generalStatus).toBe('Feeling Well');
+  });
+
+  it('parses Tagalog hindi okay as Not Feeling Well', () => {
+    const next = checkInChatService.applyUserTextToDraft(emptyDraft, 'hindi okay');
+    expect(next.generalStatus).toBe('Not Feeling Well');
+  });
 });

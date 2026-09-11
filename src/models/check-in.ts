@@ -1,4 +1,4 @@
-import type { ActivityLevel, HydrationStatus, GeneralStatus } from '@/src/models/user';
+import type { ActivityLevel, GeneralStatus, HydrationStatus } from '@/src/models/user';
 
 export type ReminderFrequency =
   | 'every_2h'

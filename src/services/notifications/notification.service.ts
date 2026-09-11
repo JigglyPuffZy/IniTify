@@ -1,13 +1,13 @@
-import { Linking, PermissionsAndroid, Platform } from 'react-native';
 import type { HeatRiskLevel } from '@/src/models/risk';
 import type { ServiceResult } from '@/src/models/service-result';
-import {
-  CHECK_IN_CHANNEL_ID,
-  EMERGENCY_CHANNEL_ID,
-  HEAT_CHANNEL_ID,
-  canUseNativeNotifications,
-} from '@/src/services/notifications/notifications.constants';
 import { CHECK_IN_NOTIFICATION_TYPE } from '@/src/services/check-in/reminder-scheduler.service';
+import {
+    CHECK_IN_CHANNEL_ID,
+    EMERGENCY_CHANNEL_ID,
+    HEAT_CHANNEL_ID,
+    canUseNativeNotifications,
+} from '@/src/services/notifications/notifications.constants';
+import { Linking, PermissionsAndroid, Platform } from 'react-native';
 
 export type NotificationPermissionStatus = 'granted' | 'denied' | 'undetermined' | 'unavailable';
 

@@ -12,7 +12,15 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import type { CurrentWeatherSnapshot } from '@/src/models/weather';
 import { TUGUEGARAO_STUDY_AREA } from '@/src/constants/study-area';
-import { layout, radius, spacing, typography, fonts, cardShadow } from '@/src/theme';
+import {
+  formatWeatherDataSourceLabel,
+  formatWeatherLocationSource,
+  formatWeatherObservationTime,
+  isWeatherObservationStale,
+  weatherObservationIso,
+} from '@/src/utils/weather-display';
+import { layout, radius, spacing, typography, fonts } from '@/src/theme';
+import { cardShadow } from '@/src/theme/shadows';
 import { PageMasthead, ScreenTopAccent } from '@/src/components/layout/PageMasthead';
 import { WeatherRefreshCountdown } from '@/src/components/WeatherRefreshCountdown';
 import { useAppTheme } from '@/src/theme/useAppTheme';
@@ -41,6 +49,7 @@ interface WeatherTabContentProps {
   onRefresh: () => void;
   horizontalPadding?: number;
   weatherRefreshSecondsLeft?: number;
+  heatDataSource?: 'live' | 'cached' | 'unavailable' | 'dev_manual';
 }
 
 export function WeatherTabContent({
@@ -51,7 +60,12 @@ export function WeatherTabContent({
   onRefresh,
   horizontalPadding = layout.pagePadding,
   weatherRefreshSecondsLeft = 0,
+  heatDataSource = 'unavailable',
 }: WeatherTabContentProps) {
+  const observationIso = weatherObservationIso(weather);
+  const observationLabel = formatWeatherObservationTime(observationIso);
+  const locationLabel = weather ? formatWeatherLocationSource(weather.coordSource) : TUGUEGARAO_STUDY_AREA.label;
+  const stale = isWeatherObservationStale(observationIso);
   const insets = useSafeAreaInsets();
   const tab = useResponsiveTabBar();
   const responsive = useResponsive();
@@ -79,16 +93,33 @@ export function WeatherTabContent({
           <PageMasthead
             overline={TUGUEGARAO_STUDY_AREA.label}
             title="Weather"
-            subtitle={weather ? weather.lastUpdated : configured ? 'Loading…' : 'Unavailable'}
-            live={Boolean(weather)}
+            subtitle={
+              weather
+                ? `${observationLabel} · ${formatWeatherDataSourceLabel(heatDataSource)}`
+                : configured
+                  ? 'Loading…'
+                  : 'Unavailable'
+            }
+            live={Boolean(weather) && heatDataSource === 'live'}
           />
 
           <View style={styles.countdownBlock}>
             <WeatherRefreshCountdown
               secondsLeft={weatherRefreshSecondsLeft}
               refreshing={refreshing || loading}
+              lastUpdatedAt={observationIso}
+              onRefresh={onRefresh}
             />
           </View>
+
+          {weather && stale ? (
+            <View style={styles.staleBanner}>
+              <Ionicons name="time-outline" size={16} color={palette.primary} />
+              <Text style={styles.staleBannerText}>
+                Observation is over 20 min old — pull down to refresh for the latest heat index.
+              </Text>
+            </View>
+          ) : null}
 
           {!configured ? (
             <EmptyPanel
@@ -127,7 +158,19 @@ export function WeatherTabContent({
                 </View>
 
                 <Text style={styles.condition}>{weather.conditionText}</Text>
-                <Text style={styles.location}>{weather.locationName}</Text>
+                <View style={styles.locationRow}>
+                  <Ionicons
+                    name={weather.coordSource === 'gps' ? 'navigate' : 'location'}
+                    size={14}
+                    color={palette.primary}
+                  />
+                  <Text style={styles.location}>{locationLabel}</Text>
+                </View>
+
+                <View style={styles.observationPill}>
+                  <Ionicons name="calendar-outline" size={13} color={palette.textMuted} />
+                  <Text style={styles.observationText}>{observationLabel}</Text>
+                </View>
 
                 <View style={styles.heatFeatured}>
                   <View style={styles.heatFeaturedLeft}>
@@ -213,8 +256,10 @@ export function WeatherTabContent({
                 style={({ pressed }) => [styles.footer, pressed && styles.pressed]}
               >
                 <View style={styles.footerText}>
-                  <Text style={styles.footerTitle}>{weather.locationName}</Text>
-                  <Text style={styles.footerBody}>{weather.lastUpdated}</Text>
+                  <Text style={styles.footerTitle}>{locationLabel}</Text>
+                  <Text style={styles.footerBody}>
+                    Heat index for {observationLabel} · {formatWeatherDataSourceLabel(heatDataSource)}
+                  </Text>
                 </View>
                 {refreshing ? (
                   <ActivityIndicator size="small" color={palette.primary} />
@@ -356,6 +401,23 @@ function createStyles(p: AppPalette, isDark: boolean, r: ResponsiveMetrics) {
     countdownBlock: {
       marginBottom: spacing.lg,
     },
+    staleBanner: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing.sm,
+      backgroundColor: p.primarySoft,
+      borderRadius: radius.lg,
+      padding: spacing.md,
+      marginBottom: spacing.lg,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(37,99,235,0.25)' : 'rgba(37,99,235,0.12)',
+    },
+    staleBannerText: {
+      ...typography.caption,
+      color: p.textSecondary,
+      flex: 1,
+      lineHeight: 18,
+    },
 
     heroCard: {
       backgroundColor: p.surface,
@@ -409,8 +471,31 @@ function createStyles(p: AppPalette, isDark: boolean, r: ResponsiveMetrics) {
     },
     location: {
       ...typography.caption,
+      fontFamily: fonts.bodySemiBold,
+      color: p.textSecondary,
+      flex: 1,
+    },
+    locationRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      marginTop: -2,
+    },
+    observationPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      alignSelf: 'flex-start',
+      backgroundColor: p.surfaceInset,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 4,
+      borderRadius: radius.pill,
+      marginTop: spacing.xs,
+    },
+    observationText: {
+      ...typography.caption,
+      fontSize: 11,
       color: p.textMuted,
-      marginTop: -4,
     },
     heatFeatured: {
       flexDirection: 'row',
@@ -574,6 +659,14 @@ function createStyles(p: AppPalette, isDark: boolean, r: ResponsiveMetrics) {
       ...typography.caption,
       color: p.textMuted,
       marginTop: 2,
+      lineHeight: 17,
+    },
+    footerNote: {
+      ...typography.caption,
+      fontSize: 11,
+      color: p.textLight,
+      marginTop: spacing.xs,
+      lineHeight: 16,
     },
     refreshBtn: {
       flexDirection: 'row',

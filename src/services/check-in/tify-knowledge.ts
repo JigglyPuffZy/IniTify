@@ -7,8 +7,8 @@ import type { UserProfile } from '@/src/models/user';
 /** Topics Tify is allowed to discuss — everything else gets a polite redirect. */
 export const TIFY_ALLOWED_TOPICS = [
   'IniTify app (check-in, heat risk, safety tips, emergency, weather, profile)',
-  'Heat index and heat risk levels (Below Caution, Caution, Extreme Caution, Danger, Extreme Danger) in Tuguegarao',
-  'Hydration, activity level, and how the user feels in hot weather',
+  'Heat index and heat risk levels (Low Risk, Caution, Extreme Caution, Danger, Extreme Danger) in Tuguegarao',
+  'Hydration, activity level, and how the user feels in hot weather (English, Filipino/Tagalog, or Taglish)',
   'Heat safety for the user\'s health conditions (not general medical advice)',
   'When to rest, drink water, seek shade, or call emergency hotlines',
   'Symptoms related to heat (headache, dizziness, nausea, cramps, exhaustion)',
